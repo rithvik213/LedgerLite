@@ -54,6 +54,19 @@ services:
     networks:
       - ledgerlite
 
+  redis:
+    image: redis:7-alpine
+    container_name: ledgerlite-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - ledgerlite
+
   prometheus:
     image: prom/prometheus:v2.55.0
     container_name: ledgerlite-prometheus

@@ -51,6 +51,20 @@ services:
       - ledgerlite
     mem_limit: 256m
 
+  redis:
+    image: redis:7-alpine
+    container_name: ledgerlite-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - ledgerlite
+    mem_limit: 128m
+
   zipkin:
     image: openzipkin/zipkin:3
     container_name: ledgerlite-zipkin
@@ -220,8 +234,11 @@ services:
       CONFIG_SERVER_URL: http://config-server:8888
       JWT_SECRET: ${JWT_SECRET:-super-secret-dev-key-that-is-at-least-256-bits-long-for-hs256}
       ZIPKIN_URL: http://zipkin:9411
+      REDIS_HOST: redis
     depends_on:
       config-server:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - ledgerlite
