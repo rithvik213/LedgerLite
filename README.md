@@ -11,7 +11,8 @@ A Spring Boot 3 microservices system implementing a personal finance ledger. Bui
                            │ HTTPS
                     ┌──────▼──────┐
                     │ API Gateway │  Spring Cloud Gateway
-                    │   (8080)    │  - JWT validation, rate limiting
+                    │   (8080)    │  - JWT validation
+                    │             │  - Redis rate limiting
                     └──────┬──────┘
             ┌──────────────┼──────────────┬──────────────┐
             │              │              │              │
@@ -27,9 +28,16 @@ A Spring Boot 3 microservices system implementing a personal finance ledger. Bui
                             │  Postgres  │         │  Redpanda  │
                             └────────────┘         │ (Kafka API)│
                                                    └────────────┘
-```
 
-**Cross-cutting:** Eureka (discovery), Config Server, Zipkin (tracing), Prometheus + Grafana (metrics), Redpanda Console (Kafka browser)
+  Cross-cutting:
+   - Eureka (8761)            service discovery
+   - Config Server (8888)     centralized config
+   - Redis (6379)             rate limit token buckets
+   - Zipkin (9411)            distributed tracing
+   - Prometheus (9090)        metrics scraping
+   - Grafana (3000)           dashboards
+   - Redpanda Console (8085)  Kafka topic browser
+```
 
 ## Tech Stack
 
@@ -45,6 +53,7 @@ A Spring Boot 3 microservices system implementing a personal finance ledger. Bui
 | Config | Spring Cloud Config (native mode) |
 | Gateway | Spring Cloud Gateway |
 | Auth | Spring Security + JWT (jjwt 0.12.x) |
+| Rate Limiting | Redis + Spring Cloud Gateway RequestRateLimiter |
 | Resilience | Resilience4j (circuit breaker + retry) |
 | Inter-service HTTP | Spring Cloud OpenFeign |
 | Tracing | Micrometer Tracing -> Zipkin |
@@ -155,3 +164,4 @@ All requests go through the API gateway on port 8080. Requires `jq` for JSON par
 - **Redpanda in dev-container mode.** Single-node, no persistence guarantees. Fine for dev; production would run a proper cluster.
 - **Tracing at 100% sampling.** Great for dev/demo. Production would sample ~10% to control overhead.
 - **Duplicated JWT validation** across services instead of a shared library. Avoids version coordination overhead at this scale. A shared lib makes sense at 10+ services.
+- **Redis-backed rate limiting** at the gateway (20 req/sec sustained, burst to 40). Uses Spring Cloud Gateway's built-in `RequestRateLimiter` with Redis token buckets, so rate limits are shared across multiple gateway instances. Keyed by client IP.
