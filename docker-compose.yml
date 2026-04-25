@@ -1,0 +1,236 @@
+# Full-stack deployment — ready for Portainer Stack
+services:
+  # --- Infrastructure ---
+  postgres:
+    image: postgres:16-alpine
+    container_name: ledgerlite-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ledgerlite
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ledgerlite}
+      POSTGRES_MULTIPLE_DATABASES: auth_db,account_db,transaction_db,analytics_db
+    volumes:
+      - ./postgres/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ledgerlite"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - ledgerlite
+    mem_limit: 512m
+
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    container_name: ledgerlite-redpanda
+    command:
+      - redpanda start
+      - --smp 1
+      - --memory 256M
+      - --mode dev-container
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
+    ports:
+      - "19092:19092"
+    networks:
+      - ledgerlite
+    mem_limit: 512m
+
+  redpanda-console:
+    image: redpandadata/console:v2.7.2
+    container_name: ledgerlite-redpanda-console
+    ports:
+      - "8085:8080"
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+    depends_on:
+      - redpanda
+    networks:
+      - ledgerlite
+    mem_limit: 256m
+
+  zipkin:
+    image: openzipkin/zipkin:3
+    container_name: ledgerlite-zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - ledgerlite
+    mem_limit: 512m
+
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    container_name: ledgerlite-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus-docker.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - ledgerlite
+    mem_limit: 256m
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: ledgerlite-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - ledgerlite
+    mem_limit: 256m
+
+  # --- Services ---
+  discovery-server:
+    build: ./discovery-server
+    container_name: ledgerlite-discovery
+    ports:
+      - "8761:8761"
+    networks:
+      - ledgerlite
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  config-server:
+    build: ./config-server
+    container_name: ledgerlite-config
+    ports:
+      - "8888:8888"
+    environment:
+      EUREKA_URL: http://discovery-server:8761/eureka/
+      CONFIG_REPO_PATH: file:/config-repo
+    volumes:
+      - ./config-repo:/config-repo:ro
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+    networks:
+      - ledgerlite
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build: ./auth-service
+    container_name: ledgerlite-auth
+    ports:
+      - "8081:8081"
+    environment:
+      EUREKA_URL: http://discovery-server:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:8888
+      DB_HOST: postgres
+      JWT_SECRET: ${JWT_SECRET:-super-secret-dev-key-that-is-at-least-256-bits-long-for-hs256}
+      ZIPKIN_URL: http://zipkin:9411
+    depends_on:
+      config-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - ledgerlite
+    mem_limit: 512m
+
+  account-service:
+    build: ./account-service
+    container_name: ledgerlite-account
+    ports:
+      - "8082:8082"
+    environment:
+      EUREKA_URL: http://discovery-server:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:8888
+      DB_HOST: postgres
+      JWT_SECRET: ${JWT_SECRET:-super-secret-dev-key-that-is-at-least-256-bits-long-for-hs256}
+      ZIPKIN_URL: http://zipkin:9411
+    depends_on:
+      config-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - ledgerlite
+    mem_limit: 512m
+
+  transaction-service:
+    build: ./transaction-service
+    container_name: ledgerlite-transaction
+    ports:
+      - "8083:8083"
+    environment:
+      EUREKA_URL: http://discovery-server:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:8888
+      DB_HOST: postgres
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      JWT_SECRET: ${JWT_SECRET:-super-secret-dev-key-that-is-at-least-256-bits-long-for-hs256}
+      ZIPKIN_URL: http://zipkin:9411
+    depends_on:
+      config-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_started
+    networks:
+      - ledgerlite
+    mem_limit: 512m
+
+  analytics-service:
+    build: ./analytics-service
+    container_name: ledgerlite-analytics
+    ports:
+      - "8084:8084"
+    environment:
+      EUREKA_URL: http://discovery-server:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:8888
+      DB_HOST: postgres
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      JWT_SECRET: ${JWT_SECRET:-super-secret-dev-key-that-is-at-least-256-bits-long-for-hs256}
+      ZIPKIN_URL: http://zipkin:9411
+    depends_on:
+      config-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_started
+    networks:
+      - ledgerlite
+    mem_limit: 512m
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: ledgerlite-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_URL: http://discovery-server:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:8888
+      JWT_SECRET: ${JWT_SECRET:-super-secret-dev-key-that-is-at-least-256-bits-long-for-hs256}
+      ZIPKIN_URL: http://zipkin:9411
+    depends_on:
+      config-server:
+        condition: service_healthy
+    networks:
+      - ledgerlite
+    mem_limit: 512m
+
+volumes:
+  postgres-data:
+  grafana-data:
+
+networks:
+  ledgerlite:
+    name: ledgerlite

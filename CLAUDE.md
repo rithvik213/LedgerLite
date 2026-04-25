@@ -216,7 +216,9 @@ Build at `analytics-service/` on port 8084 with database `analytics_db`. Require
 - Manual ack mode on the Kafka listener so we don't ack until the DB write succeeds
 - Flyway, JWT validation, Dockerfile, Eureka
 
-### ⏳ Piece 6: API Gateway + Production Deployment
+### ✅ Piece 6: API Gateway + Production Deployment
+
+**Completed.** API Gateway with edge JWT validation (GlobalFilter), in-memory rate limiting (Bucket4j, 100 req/min per IP), CORS, explicit route definitions per service. Full-stack docker-compose.yml with all services + infra, mem_limit 512m per service, Grafana datasource provisioning. Deviations: (1) Used Bucket4j in-memory rate limiting instead of Redis-backed — simpler for single-gateway deployment. (2) Skipped aggregate Swagger UI — individual service docs accessible via gateway routes. (3) Skipped Caddy/Traefik — owner's existing reverse proxy handles HTTPS termination.
 
 Build at `api-gateway/` on port 8080:
 - Spring Cloud Gateway with discovery-based routing (`spring.cloud.gateway.discovery.locator.enabled=true`) plus explicit route definitions per service
