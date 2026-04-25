@@ -1,0 +1,41 @@
+# Shared config inherited by all services via Config Server
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+    registry-fetch-interval-seconds: 5
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 20
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,loggers,env
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  tracing:
+    sampling:
+      probability: 1.0  # ~0.1 in prod
+
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411}/api/v2/spans
+
+# Shared JWT config
+ledgerlite:
+  jwt:
+    secret: ${JWT_SECRET:super-secret-dev-key-that-is-at-least-256-bits-long-for-hs256}
+    ttl: ${JWT_TTL:3600000}
+    issuer: ${JWT_ISSUER:ledgerlite}

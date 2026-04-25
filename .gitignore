@@ -1,0 +1,30 @@
+# Maven
+target/
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+*.env
+credentials.json
+
+# Docker volumes
+docker-volumes/
+
+# Maven wrapper (downloaded)
+!.mvn/wrapper/maven-wrapper.jar

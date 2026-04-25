@@ -1,0 +1,89 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ledgerlite-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ledgerlite
+      POSTGRES_PASSWORD: ledgerlite
+      POSTGRES_MULTIPLE_DATABASES: auth_db,account_db,transaction_db,analytics_db
+    volumes:
+      - ./postgres/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ledgerlite"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - ledgerlite
+
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    container_name: ledgerlite-redpanda
+    command:
+      - redpanda start
+      - --smp 1
+      - --memory 256M
+      - --mode dev-container
+      - --advertise-kafka-addr redpanda:9092
+      - --kafka-addr 0.0.0.0:9092
+    ports:
+      - "19092:9092"
+    networks:
+      - ledgerlite
+
+  redpanda-console:
+    image: redpandadata/console:v2.7.2
+    container_name: ledgerlite-redpanda-console
+    ports:
+      - "8085:8080"
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+    depends_on:
+      - redpanda
+    networks:
+      - ledgerlite
+
+  zipkin:
+    image: openzipkin/zipkin:3
+    container_name: ledgerlite-zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - ledgerlite
+
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    container_name: ledgerlite-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - ledgerlite
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: ledgerlite-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - ledgerlite
+
+volumes:
+  postgres-data:
+  grafana-data:
+
+networks:
+  ledgerlite:
+    name: ledgerlite
