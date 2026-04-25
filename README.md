@@ -52,36 +52,82 @@ A Spring Boot 3 microservices system implementing a personal finance ledger. Bui
 | API docs | springdoc-openapi 2.x |
 | Integration tests | Testcontainers |
 
-## Running Locally
+## Running
 
 ### Prerequisites
-- Java 21
-- Maven 3.9+
 - Docker & Docker Compose
 
-### 1. Start infrastructure
+### Option 1: Full stack (recommended)
+
+Builds and runs everything in Docker — no Java or Maven needed on your machine.
+
 ```bash
+docker compose up -d --build
+```
+
+This starts all 7 services + infrastructure (Postgres, Redpanda, Zipkin, Prometheus, Grafana). Services start in dependency order via health checks.
+
+### Option 2: Dev mode (infrastructure in Docker, services on host)
+
+Useful for faster iteration — services restart instantly without rebuilding images.
+
+Prerequisites: Java 21, Maven 3.9+
+
+```bash
+# 1. Start infrastructure
 docker compose -f docker-compose.infra.yml up -d
+
+# 2. Start services (each in a separate terminal, in order)
+cd discovery-server && ./mvnw spring-boot:run
+cd config-server && ./mvnw spring-boot:run
+# Wait ~5s for discovery + config to be ready, then:
+cd auth-service && ./mvnw spring-boot:run
+cd account-service && ./mvnw spring-boot:run
+cd transaction-service && ./mvnw spring-boot:run
+cd analytics-service && ./mvnw spring-boot:run
+cd api-gateway && ./mvnw spring-boot:run
 ```
 
-### 2. Start services (in order)
+### Stopping
+
 ```bash
-cd discovery-server && ./mvnw spring-boot:run &
-cd config-server && ./mvnw spring-boot:run &
-# Wait for discovery + config to be ready, then start the others
-cd auth-service && ./mvnw spring-boot:run &
-cd account-service && ./mvnw spring-boot:run &
-cd transaction-service && ./mvnw spring-boot:run &
-cd analytics-service && ./mvnw spring-boot:run &
-cd api-gateway && ./mvnw spring-boot:run &
+# Full stack
+docker compose down
+
+# Dev mode
+pkill -f "spring-boot:run"
+docker compose -f docker-compose.infra.yml down
 ```
 
-### 3. Access dashboards
-- **Eureka:** http://localhost:8761
-- **Zipkin:** http://localhost:9411
-- **Grafana:** http://localhost:3000
-- **Prometheus:** http://localhost:9090
-- **Redpanda Console:** http://localhost:8085
+### Try it out
+
+```bash
+# Register
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"demo@test.com","password":"password123"}'
+
+# Login (save the token)
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"demo@test.com","password":"password123"}'
+
+# Create account (use token from login response)
+curl -X POST http://localhost:8080/api/accounts \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"name":"Checking","type":"CHECKING"}'
+```
+
+All requests go through the API gateway on port 8080.
+
+### Dashboards
+- **Eureka (service registry):** http://localhost:8761
+- **Zipkin (distributed traces):** http://localhost:9411
+- **Grafana (metrics dashboards):** http://localhost:3000
+- **Prometheus (raw metrics):** http://localhost:9090
+- **Redpanda Console (Kafka topics):** http://localhost:8085
+- **Swagger UI:** http://localhost:8081/swagger-ui.html (per-service, ports 8081-8084)
 
 ## Design Tradeoffs
 
