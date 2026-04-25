@@ -184,7 +184,9 @@ Build at `account-service/` on port 8082 with database `account_db`. Requirement
 - `OptimisticLockException` → 409 Conflict in `@ControllerAdvice`
 - Dockerfile, register with Eureka
 
-### ⏳ Piece 4: Transaction Service
+### ✅ Piece 4: Transaction Service
+
+**Completed.** Feign client to account-service with HC5 (PATCH support), Resilience4j circuit breaker + retry, Kafka event publishing, idempotency keys, all CRUD endpoints. Integration tests pass against running infra. Deviations: (1) Used feign-hc5 instead of default JDK client because JDK HttpURLConnection doesn't support PATCH. (2) Integration test uses running docker-compose infra instead of Testcontainers due to Docker Desktop 4.70 API incompatibility with current Testcontainers/docker-java versions.
 
 Build at `transaction-service/` on port 8083 with database `transaction_db`. **This is the centerpiece — the most demonstrative service.** Requirements:
 - Transaction entity: `id (UUID)`, `accountId`, `userId`, `amount`, `category`, `description`, `idempotencyKey (unique)`, `createdAt`, `status (PENDING|POSTED|FAILED)`
@@ -200,7 +202,9 @@ Build at `transaction-service/` on port 8083 with database `transaction_db`. **T
 - **At least one Testcontainers integration test** spinning up Postgres + Redpanda, testing the full POST flow including idempotency replay
 - Flyway, JWT validation, Dockerfile, Eureka
 
-### ⏳ Piece 5: Analytics Service
+### ✅ Piece 5: Analytics Service
+
+**Completed.** Kafka consumer on `transactions.posted`, idempotent via `processed_transactions` table, manual ack, monthly spending aggregation, both query endpoints working. Deviations: (1) Fixed Redpanda to use dual listeners (internal/external) for host access. (2) Set `spring.json.use.type.headers=false` so the consumer ignores the producer's class name header and uses its own DTO class.
 
 Build at `analytics-service/` on port 8084 with database `analytics_db`. Requirements:
 - Kafka consumer on `transactions.posted`, consumer group `analytics-aggregator`

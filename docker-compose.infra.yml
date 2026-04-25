@@ -27,10 +27,10 @@ services:
       - --smp 1
       - --memory 256M
       - --mode dev-container
-      - --advertise-kafka-addr redpanda:9092
-      - --kafka-addr 0.0.0.0:9092
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
     ports:
-      - "19092:9092"
+      - "19092:19092"
     networks:
       - ledgerlite
 
