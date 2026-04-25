@@ -97,6 +97,16 @@ cd analytics-service && ./mvnw spring-boot:run
 cd api-gateway && ./mvnw spring-boot:run
 ```
 
+### Running tests
+
+Once all services are running and Eureka has propagated (~20 seconds):
+
+```bash
+./e2e-test.sh
+```
+
+Runs 37 end-to-end tests through the gateway covering auth, accounts, transactions (with idempotency), analytics (Kafka event processing), and rate limiting.
+
 ### Stopping
 
 ```bash
