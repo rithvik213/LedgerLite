@@ -102,24 +102,42 @@ docker compose -f docker-compose.infra.yml down
 ### Try it out
 
 ```bash
-# Register
-curl -X POST http://localhost:8080/api/auth/register \
+# Register a user
+curl -s -X POST http://localhost:8080/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"demo@test.com","password":"password123"}'
 
-# Login (save the token)
-curl -X POST http://localhost:8080/api/auth/login \
+# Login and save the JWT token
+TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"demo@test.com","password":"password123"}'
+  -d '{"email":"demo@test.com","password":"password123"}' | jq -r '.token')
 
-# Create account (use token from login response)
-curl -X POST http://localhost:8080/api/accounts \
+# Create a checking account
+ACCOUNT_ID=$(curl -s -X POST http://localhost:8080/api/accounts \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{"name":"Checking","type":"CHECKING"}'
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"name":"Checking","type":"CHECKING"}' | jq -r '.id')
+
+# Deposit $1000
+curl -s -X PATCH http://localhost:8080/api/accounts/$ACCOUNT_ID/balance \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"delta":1000,"expectedVersion":0}'
+
+# Post a transaction
+curl -s -X POST http://localhost:8080/api/transactions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d "{\"accountId\":\"$ACCOUNT_ID\",\"amount\":-35.50,\"category\":\"FOOD\",\"description\":\"Lunch\"}"
+
+# Check spending analytics (wait a few seconds for Kafka processing)
+sleep 3
+curl -s "http://localhost:8080/api/analytics/spending/by-category?month=$(date +%Y-%m)" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-All requests go through the API gateway on port 8080.
+All requests go through the API gateway on port 8080. Requires `jq` for JSON parsing (`brew install jq`).
 
 ### Dashboards
 - **Eureka (service registry):** http://localhost:8761
