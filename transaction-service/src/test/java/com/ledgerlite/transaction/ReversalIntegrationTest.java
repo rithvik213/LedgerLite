@@ -89,7 +89,7 @@ class ReversalIntegrationTest {
                 .andExpect(jsonPath("$.idempotencyKey").value(reversalKey));
 
         // Verify the reversal row persisted with the right amount sign and back-reference
-        var reversal = transactionRepository.findByIdempotencyKey(reversalKey);
+        var reversal = transactionRepository.findByIdempotencyKeyAndUserId(reversalKey, USER_A);
         assertThat(reversal).isPresent();
         assertThat(reversal.get().getAmount()).isEqualByComparingTo(new BigDecimal("-100.00"));
         assertThat(reversal.get().getReversesTransactionId()).isEqualTo(original.getId());
@@ -117,7 +117,7 @@ class ReversalIntegrationTest {
                         .content("{}"))
                 .andReturn();
 
-        String firstReversalId = transactionRepository.findByIdempotencyKey(reversalKey)
+        String firstReversalId = transactionRepository.findByIdempotencyKeyAndUserId(reversalKey, USER_A)
                 .orElseThrow().getId().toString();
 
         // Second call — same key
@@ -130,8 +130,8 @@ class ReversalIntegrationTest {
                 .andExpect(jsonPath("$.id").value(firstReversalId));
 
         // Exactly one reversal row should exist (no duplicates from replay)
-        assertThat(transactionRepository.findByReversesTransactionId(original.getId())).isPresent();
-        assertThat(transactionRepository.findByIdempotencyKey(reversalKey).get().getId())
+        assertThat(transactionRepository.findByReversesTransactionIdAndUserId(original.getId(), USER_A)).isPresent();
+        assertThat(transactionRepository.findByIdempotencyKeyAndUserId(reversalKey, USER_A).get().getId())
                 .isEqualTo(UUID.fromString(firstReversalId));
         // One original + one reversal = 2 rows total
         assertThat(transactionRepository.count()).isEqualTo(2);
@@ -251,7 +251,7 @@ class ReversalIntegrationTest {
                         .content("{}"))
                 .andReturn();
 
-        UUID userAReversalId = transactionRepository.findByIdempotencyKey(sharedKey)
+        UUID userAReversalId = transactionRepository.findByIdempotencyKeyAndUserId(sharedKey, USER_A)
                 .orElseThrow().getId();
 
         // User B replays the same Idempotency-Key against A's transaction.

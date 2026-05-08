@@ -135,7 +135,7 @@ public class TransactionService {
 
         // Pre-flight check for "already reversed". The unique index is the definitive guard
         // (handles races), but checking here gives a friendlier error path for the common case.
-        transactionRepository.findByReversesTransactionId(originalId).ifPresent(existing -> {
+        transactionRepository.findByReversesTransactionIdAndUserId(originalId, requestingUserId).ifPresent(existing -> {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "already_reversed: transaction " + originalId + " has already been reversed");
         });

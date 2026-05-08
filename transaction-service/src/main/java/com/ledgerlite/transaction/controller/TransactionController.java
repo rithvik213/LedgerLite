@@ -6,6 +6,9 @@ import com.ledgerlite.transaction.dto.TransactionResponse;
 import com.ledgerlite.transaction.entity.Transaction;
 import com.ledgerlite.transaction.repository.TransactionRepository;
 import com.ledgerlite.transaction.service.TransactionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -48,10 +51,30 @@ public class TransactionController {
         TransactionResponse response = transactionService.createTransaction(
                 UUID.fromString(userId), idempotencyKey, request);
 
-        HttpStatus status = response.failureReason() == null ? HttpStatus.CREATED : HttpStatus.UNPROCESSABLE_ENTITY;
+        // Standardized FAILED detection — same predicate the reverse endpoint uses.
+        HttpStatus status = response.status() == com.ledgerlite.transaction.entity.TransactionStatus.FAILED
+                ? HttpStatus.UNPROCESSABLE_ENTITY
+                : HttpStatus.CREATED;
         return ResponseEntity.status(status).body(response);
     }
 
+    @Operation(
+        summary = "Reverse a posted transaction",
+        description = "Append-only ledger semantics: the original row is never mutated. " +
+            "A new transaction with negated amount is created and references the original via " +
+            "reversesTransactionId. Idempotency-Key replays always return 200, including when " +
+            "the stored reversal landed FAILED — clients should treat any 200 as 'already seen' " +
+            "rather than retrying, to avoid an infinite-retry trap on poisoned keys."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Reversal created and POSTED"),
+        @ApiResponse(responseCode = "200", description = "Idempotent replay — body is the previously stored reversal row regardless of its terminal status"),
+        @ApiResponse(responseCode = "403", description = "Original transaction belongs to a different user"),
+        @ApiResponse(responseCode = "404", description = "Original transaction not found"),
+        @ApiResponse(responseCode = "409", description = "Already reversed, or Idempotency-Key was used for a different operation"),
+        @ApiResponse(responseCode = "422", description = "Original is not POSTED, or attempt to reverse a reversal"),
+        @ApiResponse(responseCode = "503", description = "Account-service unreachable on a fresh request")
+    })
     @PostMapping("/{id}/reverse")
     public ResponseEntity<TransactionResponse> reverse(
             @AuthenticationPrincipal String userId,

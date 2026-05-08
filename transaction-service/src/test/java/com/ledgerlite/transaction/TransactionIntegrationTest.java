@@ -106,7 +106,7 @@ class TransactionIntegrationTest {
                 .andExpect(jsonPath("$.amount").value(50.00));
 
         // Verify persisted in DB
-        Optional<Transaction> saved = transactionRepository.findByIdempotencyKey(idempotencyKey);
+        Optional<Transaction> saved = transactionRepository.findByIdempotencyKeyAndUserId(idempotencyKey, TEST_USER_ID);
         assertThat(saved).isPresent();
         assertThat(saved.get().getUserId()).isEqualTo(TEST_USER_ID);
 
