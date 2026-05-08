@@ -42,11 +42,14 @@ export function Analytics() {
     refetch,
   } = useSpendingByCategory(month, accountId);
 
-  // Spending data arrives as negative debits from the analytics aggregator.
-  // The display semantic of "total spending" is the magnitude of those debits.
+  // The analytics aggregator stores per-category sums for ALL transactions
+  // (debits and credits). "Spending" semantically means debits only — income
+  // categories like a paycheck would otherwise inflate the total and mix
+  // into the "spending by category" charts. Filter to negative-amount rows.
+  const debitRows = (spendingData ?? []).filter((row) => row.totalAmount.startsWith('-'));
   const total =
-    spendingData && spendingData.length > 0
-      ? absDecimalString(sumDecimalStrings(spendingData.map((row) => row.totalAmount)))
+    debitRows.length > 0
+      ? absDecimalString(sumDecimalStrings(debitRows.map((row) => row.totalAmount)))
       : null;
 
   return (
@@ -116,8 +119,9 @@ export function Analytics() {
         </div>
       )}
 
-      {/* Empty state */}
-      {!isLoading && !isError && spendingData?.length === 0 && (
+      {/* Empty state — true when there's no debit activity to chart, even if
+          income exists, since the charts and total are spending-only. */}
+      {!isLoading && !isError && debitRows.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-16 text-center">
           <PieChart size={40} className="text-muted-foreground/40" aria-hidden="true" />
           <p className="text-sm text-muted-foreground">No spending data for this month.</p>
@@ -125,14 +129,14 @@ export function Analytics() {
       )}
 
       {/* Charts — rendered side-by-side on md+, stacked on mobile */}
-      {!isLoading && !isError && spendingData && spendingData.length > 0 && (
+      {!isLoading && !isError && debitRows.length > 0 && (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">By Category (Donut)</CardTitle>
             </CardHeader>
             <CardContent>
-              <CategoryDonut data={spendingData} />
+              <CategoryDonut data={debitRows} />
             </CardContent>
           </Card>
 
@@ -141,7 +145,7 @@ export function Analytics() {
               <CardTitle className="text-base">By Category (Bar)</CardTitle>
             </CardHeader>
             <CardContent>
-              <SpendingBarChart data={spendingData} />
+              <SpendingBarChart data={debitRows} />
             </CardContent>
           </Card>
         </div>

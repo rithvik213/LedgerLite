@@ -44,7 +44,7 @@ const MOCK_SPENDING: SpendingResponse[] = [
     accountId: 'a1',
     yearMonth: '2025-01',
     category: 'FOOD',
-    totalAmount: '150.0000',
+    totalAmount: '-150.0000',
     transactionCount: 3,
   },
   {
@@ -52,7 +52,7 @@ const MOCK_SPENDING: SpendingResponse[] = [
     accountId: 'a1',
     yearMonth: '2025-01',
     category: 'TRANSPORT',
-    totalAmount: '75.5000',
+    totalAmount: '-75.5000',
     transactionCount: 2,
   },
 ];

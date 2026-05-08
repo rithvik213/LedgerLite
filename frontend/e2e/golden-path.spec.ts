@@ -66,7 +66,9 @@ test.describe('LedgerLite — golden path', () => {
     await txDialog.getByRole('textbox', { name: /description/i }).fill('Lunch e2e');
     await txDialog.getByRole('button', { name: /submit/i }).click();
 
-    await expect(page.getByText(/transaction created/i)).toBeVisible();
+    // Radix's Toast renders title + accessible-name in nested nodes; first()
+    // collapses the strict-mode duplicate match to the visible title.
+    await expect(page.getByText(/transaction created/i).first()).toBeVisible();
 
     // Filter by the account to make the table populate (transactions page uses
     // an explicit account filter so the empty state is "select an account…").
