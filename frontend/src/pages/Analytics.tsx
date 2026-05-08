@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { PieChart } from 'lucide-react';
 import { listAccounts } from '../api/accounts';
 import { useSpendingByCategory } from '../hooks/useSpending';
 import { MonthPicker } from '../components/MonthPicker';
@@ -117,8 +118,9 @@ export function Analytics() {
 
       {/* Empty state */}
       {!isLoading && !isError && spendingData?.length === 0 && (
-        <div className="flex h-64 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
-          No spending data for this month.
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-16 text-center">
+          <PieChart size={40} className="text-muted-foreground/40" aria-hidden="true" />
+          <p className="text-sm text-muted-foreground">No spending data for this month.</p>
         </div>
       )}
 

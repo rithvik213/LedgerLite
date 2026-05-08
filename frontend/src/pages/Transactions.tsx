@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { ArrowLeftRight } from 'lucide-react';
 import { listAccounts } from '../api/accounts';
 import { useTransactionsList } from '../hooks/useTransactions';
 import { TransactionTable } from '../components/TransactionTable';
@@ -116,8 +117,9 @@ export function Transactions() {
           <div
             role="status"
             aria-live="polite"
-            className="flex flex-col items-center justify-center py-16 text-muted-foreground"
+            className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground"
           >
+            <ArrowLeftRight size={36} className="text-muted-foreground/40" aria-hidden="true" />
             <p className="text-sm">Select an account to view transactions</p>
           </div>
         )}

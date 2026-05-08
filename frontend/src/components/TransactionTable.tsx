@@ -13,13 +13,15 @@ interface Props {
   transactions: TransactionResponse[];
 }
 
+// Light-mode bg classes kept for test assertions (toHaveClass checks them).
+// Dark-mode overrides are additive via the dark: prefix.
 const STATUS_CLASSES: Record<TransactionStatus, string> = {
   PENDING:
-    'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800',
+    'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
   POSTED:
-    'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-800',
+    'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-800 dark:bg-emerald-900/30 dark:text-emerald-300',
   FAILED:
-    'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-red-100 text-red-800',
+    'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
 };
 
 function StatusBadge({ status }: { status: TransactionStatus }) {
@@ -33,8 +35,8 @@ function AmountCell({ amount }: { amount: string }) {
     <span
       className={
         isNegative
-          ? 'font-medium text-red-600 negative-amount'
-          : 'font-medium text-green-600 positive-amount'
+          ? 'font-medium text-red-600 dark:text-red-400 negative-amount'
+          : 'font-medium text-green-600 dark:text-emerald-400 positive-amount'
       }
     >
       {formatCurrency(amount)}
