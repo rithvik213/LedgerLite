@@ -1,3 +1,4 @@
+import { Wallet } from 'lucide-react';
 import { AccountCard } from '../components/AccountCard';
 import { NewAccountDialog } from '../components/NewAccountDialog';
 import { useAccountsList } from '../hooks/useAccounts';
@@ -48,11 +49,17 @@ export function Accounts() {
       )}
 
       {!isLoading && !isError && accounts?.length === 0 && (
-        <div className="flex flex-col items-center gap-3 rounded-lg border bg-card px-6 py-16 text-center">
-          <p className="text-muted-foreground">You don't have any accounts yet.</p>
+        <div className="flex flex-col items-center gap-4 rounded-lg border bg-card px-6 py-16 text-center">
+          <Wallet size={40} className="text-muted-foreground/40" aria-hidden="true" />
+          <div>
+            <p className="font-medium">No accounts yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Get started by creating your first account.
+            </p>
+          </div>
           <NewAccountDialog
             trigger={
-              <button className="text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <button className="inline-flex items-center gap-1.5 rounded-md bg-[hsl(var(--accent))] px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 Create your first account
               </button>
             }

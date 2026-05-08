@@ -1,4 +1,6 @@
 import { useQueries } from '@tanstack/react-query';
+import { Wallet, TrendingDown, PlusCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { AccountCard } from '../components/AccountCard';
 import { TransactionTable } from '../components/TransactionTable';
@@ -39,18 +41,22 @@ function TotalBalanceCard({
 }) {
   const total = sumDecimalStrings(balances);
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+    <Card className="relative overflow-hidden transition-shadow hover:shadow-md">
+      <CardHeader className="pb-1">
+        <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Total Balance
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-3xl font-bold tabular-nums">
+        <p className="text-4xl font-bold tabular-nums">
           {formatCurrency(total, currency)}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">{currency}</p>
       </CardContent>
+      {/* Accent icon — decorative */}
+      <div className="absolute right-4 top-4 text-[hsl(var(--accent)/0.25)]">
+        <Wallet size={40} aria-hidden="true" />
+      </div>
     </Card>
   );
 }
@@ -67,16 +73,16 @@ function SpendingCard({
   isError: boolean;
 }) {
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+    <Card className="relative overflow-hidden transition-shadow hover:shadow-md">
+      <CardHeader className="pb-1">
+        <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           This Month's Spending
         </CardTitle>
       </CardHeader>
       <CardContent>
         {isLoading && (
           <div
-            className="h-9 w-32 animate-pulse rounded bg-muted"
+            className="h-10 w-32 animate-pulse rounded bg-muted"
             aria-hidden="true"
           />
         )}
@@ -84,13 +90,20 @@ function SpendingCard({
           <p className="text-sm text-destructive">Unable to load spending</p>
         )}
         {!isLoading && !isError && (
-          <p className="text-3xl font-bold tabular-nums">
+          <p className="text-4xl font-bold tabular-nums">
             {/* Spending arrives as negative debits from the analytics aggregator;
                 show the magnitude so "this month's spending" reads naturally. */}
             {formatCurrency(absDecimalString(sumDecimalStrings(spending)), currency)}
           </p>
         )}
+        {!isLoading && !isError && (
+          <p className="mt-1 text-xs text-muted-foreground">{currency}</p>
+        )}
       </CardContent>
+      {/* Accent icon — decorative */}
+      <div className="absolute right-4 top-4 text-[hsl(var(--accent)/0.25)]">
+        <TrendingDown size={40} aria-hidden="true" />
+      </div>
     </Card>
   );
 }
@@ -173,11 +186,19 @@ export function Dashboard() {
       <div className="flex flex-col gap-6">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <Card>
-          <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
+          <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
+            <Wallet size={40} className="text-muted-foreground/40" aria-hidden="true" />
             <p className="font-medium">No accounts yet</p>
             <p className="text-sm text-muted-foreground">
               Create an account to see your financial summary here.
             </p>
+            <Link
+              to="/accounts"
+              className="mt-1 inline-flex items-center gap-1.5 rounded-md bg-[hsl(var(--accent))] px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <PlusCircle size={15} aria-hidden="true" />
+              Create your first account
+            </Link>
           </CardContent>
         </Card>
       </div>
@@ -219,7 +240,7 @@ export function Dashboard() {
           <h2 id="recent-tx-heading" className="mb-3 text-lg font-semibold">
             Recent Transactions
           </h2>
-          <Card>
+          <Card className="transition-shadow hover:shadow-md">
             <CardContent className="pt-4">
               {txLoading && (
                 <div

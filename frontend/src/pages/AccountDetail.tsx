@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeftRight, Building2, PiggyBank, CreditCard } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { formatCurrency, formatDate } from '../lib/format';
@@ -8,9 +9,15 @@ import { TransactionTable } from '../components/TransactionTable';
 import type { AccountType } from '../types/account';
 
 const TYPE_STYLES: Record<AccountType, string> = {
-  CHECKING: 'bg-blue-100 text-blue-800',
-  SAVINGS: 'bg-green-100 text-green-800',
-  CREDIT: 'bg-orange-100 text-orange-800',
+  CHECKING: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  SAVINGS: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+  CREDIT: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
+};
+
+const TYPE_ICONS: Record<AccountType, React.ReactNode> = {
+  CHECKING: <Building2 size={14} aria-hidden="true" />,
+  SAVINGS: <PiggyBank size={14} aria-hidden="true" />,
+  CREDIT: <CreditCard size={14} aria-hidden="true" />,
 };
 
 function isNotFoundError(err: unknown): boolean {
@@ -118,8 +125,9 @@ function AccountDetailContent({
               </p>
             </div>
             <span
-              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${TYPE_STYLES[account.type]}`}
+              className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${TYPE_STYLES[account.type]}`}
             >
+              {TYPE_ICONS[account.type]}
               {account.type}
             </span>
           </div>
@@ -172,8 +180,9 @@ function AccountDetailContent({
                 <div
                   role="status"
                   aria-live="polite"
-                  className="flex flex-col items-center justify-center py-16 text-muted-foreground"
+                  className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground"
                 >
+                  <ArrowLeftRight size={36} className="text-muted-foreground/40" aria-hidden="true" />
                   <p className="text-sm">No transactions yet for this account.</p>
                 </div>
               ) : (
