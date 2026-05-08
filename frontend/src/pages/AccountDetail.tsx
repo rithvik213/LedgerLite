@@ -3,6 +3,8 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { formatCurrency, formatDate } from '../lib/format';
 import { useAccount } from '../hooks/useAccounts';
+import { useTransactionsList } from '../hooks/useTransactions';
+import { TransactionTable } from '../components/TransactionTable';
 import type { AccountType } from '../types/account';
 
 const TYPE_STYLES: Record<AccountType, string> = {
@@ -70,13 +72,35 @@ export function AccountDetail() {
   if (!account) return null;
 
   return (
+    <AccountDetailContent id={account.id} account={account} onBack={() => navigate('/accounts')} />
+  );
+}
+
+// Extracted so the transactions hook is only mounted once the account is confirmed loaded.
+function AccountDetailContent({
+  id,
+  account,
+  onBack,
+}: {
+  id: string;
+  account: NonNullable<ReturnType<typeof useAccount>['data']>;
+  onBack: () => void;
+}) {
+  const {
+    data: transactions,
+    isLoading: txLoading,
+    isError: txError,
+    refetch: txRefetch,
+  } = useTransactionsList(id);
+
+  return (
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate('/accounts')}
+          onClick={onBack}
           aria-label="Back to accounts"
         >
           ← Back
@@ -108,14 +132,54 @@ export function AccountDetail() {
         </CardContent>
       </Card>
 
-      {/* Recent transactions placeholder — wired up in Phase 3 */}
+      {/* Transactions section */}
       <section aria-labelledby="transactions-heading">
         <h2 id="transactions-heading" className="mb-3 text-lg font-semibold">
-          Recent transactions
+          Transactions
         </h2>
         <Card>
-          <CardContent className="py-10 text-center">
-            <p className="text-sm text-muted-foreground">Transactions coming soon</p>
+          <CardContent className="pt-4">
+            {txLoading && (
+              <div
+                className="space-y-2 py-4"
+                aria-busy="true"
+                aria-label="Loading transactions"
+              >
+                {[...Array(4)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-8 animate-pulse rounded bg-muted"
+                    aria-hidden="true"
+                  />
+                ))}
+              </div>
+            )}
+            {txError && !txLoading && (
+              <div
+                role="alert"
+                className="flex flex-col items-center gap-3 py-10 text-center"
+              >
+                <p className="text-sm text-destructive">
+                  Failed to load transactions.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => txRefetch()}>
+                  Try again
+                </Button>
+              </div>
+            )}
+            {!txLoading && !txError && transactions !== undefined && (
+              transactions.length === 0 ? (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="flex flex-col items-center justify-center py-16 text-muted-foreground"
+                >
+                  <p className="text-sm">No transactions yet for this account.</p>
+                </div>
+              ) : (
+                <TransactionTable transactions={transactions} />
+              )
+            )}
           </CardContent>
         </Card>
       </section>
