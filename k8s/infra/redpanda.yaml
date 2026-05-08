@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: redpanda
+  namespace: ledgerlite
+spec:
+  selector:
+    app: redpanda
+  ports:
+    - name: kafka
+      port: 9092
+      targetPort: 9092
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redpanda
+  namespace: ledgerlite
+spec:
+  serviceName: redpanda
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redpanda
+  template:
+    metadata:
+      labels:
+        app: redpanda
+    spec:
+      containers:
+        - name: redpanda
+          image: redpandadata/redpanda:v24.2.7
+          args:
+            - redpanda
+            - start
+            - --smp=1
+            - --memory=256M
+            - --mode=dev-container
+            - --kafka-addr=internal://0.0.0.0:9092
+            - --advertise-kafka-addr=internal://redpanda-0.redpanda.ledgerlite.svc.cluster.local:9092
+          ports:
+            - containerPort: 9092
+              name: kafka
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/redpanda/data
+          readinessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

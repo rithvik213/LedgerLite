@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: transaction-service
+  namespace: ledgerlite
+spec:
+  selector:
+    app: transaction-service
+  ports:
+    - port: 8083
+      targetPort: 8083
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transaction-service
+  namespace: ledgerlite
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transaction-service
+  template:
+    metadata:
+      labels:
+        app: transaction-service
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: transaction-service
+          image: ledgerlite/transaction-service:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8083
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres:5432/transaction_db
+            - name: SPRING_DATASOURCE_USERNAME
+              value: ledgerlite
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: JWT_SECRET
+            - name: ZIPKIN_URL
+              value: http://zipkin:9411
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: redpanda:9092
+            - name: ACCOUNT_SERVICE_URL
+              value: http://account-service:8082
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8083
+            initialDelaySeconds: 120
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8083
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits: { cpu: 500m, memory: 768Mi }
