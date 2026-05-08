@@ -1,6 +1,7 @@
 package com.ledgerlite.transaction.controller;
 
 import com.ledgerlite.transaction.dto.CreateTransactionRequest;
+import com.ledgerlite.transaction.dto.ReverseTransactionRequest;
 import com.ledgerlite.transaction.dto.TransactionResponse;
 import com.ledgerlite.transaction.entity.Transaction;
 import com.ledgerlite.transaction.repository.TransactionRepository;
@@ -38,8 +39,8 @@ public class TransactionController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Idempotency-Key header is required");
         }
 
-        // Check if this is an idempotent replay
-        var existing = transactionRepository.findByIdempotencyKey(idempotencyKey);
+        // Idempotency replay: scope by userId so user B replaying user A's key cannot read A's row.
+        var existing = transactionRepository.findByIdempotencyKeyAndUserId(idempotencyKey, UUID.fromString(userId));
         if (existing.isPresent()) {
             return ResponseEntity.ok(TransactionResponse.from(existing.get()));
         }
@@ -49,6 +50,34 @@ public class TransactionController {
 
         HttpStatus status = response.failureReason() == null ? HttpStatus.CREATED : HttpStatus.UNPROCESSABLE_ENTITY;
         return ResponseEntity.status(status).body(response);
+    }
+
+    @PostMapping("/{id}/reverse")
+    public ResponseEntity<TransactionResponse> reverse(
+            @AuthenticationPrincipal String userId,
+            @PathVariable UUID id,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @Valid @RequestBody(required = false) ReverseTransactionRequest request) {
+
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Idempotency-Key header is required");
+        }
+
+        // Idempotency replay scoped by userId — see create() for the cross-tenant rationale.
+        var existing = transactionRepository.findByIdempotencyKeyAndUserId(idempotencyKey, UUID.fromString(userId));
+        if (existing.isPresent()) {
+            return ResponseEntity.ok(TransactionResponse.from(existing.get()));
+        }
+
+        TransactionResponse response = transactionService.reverseTransaction(
+                UUID.fromString(userId), idempotencyKey, id, request);
+
+        // A reversal persisted as FAILED means account-service was unreachable — surface as 503.
+        if (response.status() == com.ledgerlite.transaction.entity.TransactionStatus.FAILED) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+        }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{id}")

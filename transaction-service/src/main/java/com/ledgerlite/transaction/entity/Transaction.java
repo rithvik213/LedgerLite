@@ -38,6 +38,10 @@ public class Transaction {
     @Column(name = "failure_reason", length = 500)
     private String failureReason;
 
+    // NULL for regular transactions; non-null identifies this row as a reversal of the referenced tx.
+    @Column(name = "reverses_transaction_id")
+    private UUID reversesTransactionId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -67,6 +71,9 @@ public class Transaction {
 
     public String getFailureReason() { return failureReason; }
     public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
+
+    public UUID getReversesTransactionId() { return reversesTransactionId; }
+    public void setReversesTransactionId(UUID reversesTransactionId) { this.reversesTransactionId = reversesTransactionId; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

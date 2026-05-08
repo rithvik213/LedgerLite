@@ -16,6 +16,7 @@ public record TransactionResponse(
         String idempotencyKey,
         TransactionStatus status,
         String failureReason,
+        UUID reversesTransactionId,
         Instant createdAt
 ) {
     public static TransactionResponse from(Transaction tx) {
@@ -23,6 +24,7 @@ public record TransactionResponse(
                 tx.getId(), tx.getAccountId(), tx.getUserId(),
                 tx.getAmount(), tx.getCategory(), tx.getDescription(),
                 tx.getIdempotencyKey(), tx.getStatus(), tx.getFailureReason(),
+                tx.getReversesTransactionId(),
                 tx.getCreatedAt()
         );
     }
