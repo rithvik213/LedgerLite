@@ -5,6 +5,7 @@ import {
   listTransactions,
 } from '../api/transactions';
 import type { CreateTransactionRequest } from '../types/transaction';
+import { ACCOUNTS_QUERY_KEY } from './useAccounts';
 
 export const transactionKeys = {
   all: ['transactions'] as const,
@@ -51,6 +52,11 @@ export function useCreateTransaction() {
       queryClient.invalidateQueries({
         queryKey: transactionKeys.lists(),
       });
+      // The transaction has already updated the account's balance via
+      // account-service. Invalidate the accounts cache so Dashboard's
+      // total balance, AccountCard balances, and AccountDetail all refetch
+      // — otherwise users see stale balances after posting a transaction.
+      queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
     },
   });
 }
