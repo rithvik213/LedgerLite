@@ -1,4 +1,4 @@
-import { sumDecimalStrings } from '../decimal';
+import { sumDecimalStrings, absDecimalString } from '../decimal';
 
 describe('sumDecimalStrings', () => {
   it('returns "0.0000" for empty input', () => {
@@ -30,5 +30,20 @@ describe('sumDecimalStrings', () => {
 
   it('treats integers as zero-fractional', () => {
     expect(sumDecimalStrings(['100', '50'])).toBe('150.0000');
+  });
+});
+
+describe('absDecimalString', () => {
+  it('strips the leading minus from a negative value', () => {
+    expect(absDecimalString('-50.0000')).toBe('50.0000');
+  });
+
+  it('returns positive values unchanged', () => {
+    expect(absDecimalString('50.0000')).toBe('50.0000');
+    expect(absDecimalString('0.0000')).toBe('0.0000');
+  });
+
+  it('preserves precision for large negatives', () => {
+    expect(absDecimalString('-12345678901234.5000')).toBe('12345678901234.5000');
   });
 });

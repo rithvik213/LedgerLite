@@ -42,8 +42,9 @@ export function CategoryDonut({ data }: Props) {
 
   const chartData = data.map((row) => ({
     name: row.category,
-    // Display-only conversion — see JSDoc above
-    value: Number(row.totalAmount),
+    // Display-only conversion — see JSDoc above. Math.abs because the analytics
+    // aggregator stores debits as negative; donut slices are sized by magnitude.
+    value: Math.abs(Number(row.totalAmount)),
   }));
 
   return (

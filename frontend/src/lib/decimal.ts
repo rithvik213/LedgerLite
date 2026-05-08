@@ -20,9 +20,26 @@ export function sumDecimalStrings(values: string[], scale = 4): string {
   return formatScaled(total, scale);
 }
 
+/**
+ * Returns the absolute value of a decimal string. Used at the display layer
+ * to convert "spending" (which arrives as a negative debit total from the
+ * analytics aggregator) into a positive number for UI presentation. Operates
+ * purely on the string so no float coercion happens.
+ */
+export function absDecimalString(value: string): string {
+  const str = String(value);
+  return str.startsWith('-') ? str.slice(1) : str;
+}
+
 function parseScaled(s: string, scale: number): bigint {
-  const negative = s.startsWith('-');
-  const body = negative ? s.slice(1) : s;
+  // Defensive coerce: a misconfigured backend that emits BigDecimal as a JSON
+  // number (Jackson's default — fixed in our services via JacksonConfig but
+  // worth guarding against on the client too) would arrive here as a JS
+  // `number`. String() preserves the value losslessly enough for typical
+  // money amounts and prevents the UI from crashing on contract drift.
+  const str = String(s);
+  const negative = str.startsWith('-');
+  const body = negative ? str.slice(1) : str;
   const [intPart, fracPart = ''] = body.split('.');
   const padded = fracPart.padEnd(scale, '0').slice(0, scale);
   const result = BigInt(intPart + padded);

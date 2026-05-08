@@ -15,7 +15,7 @@ import {
 } from '../components/ui/select';
 import { Button } from '../components/ui/button';
 import { formatCurrency } from '../lib/format';
-import { sumDecimalStrings } from '../lib/decimal';
+import { sumDecimalStrings, absDecimalString } from '../lib/decimal';
 
 function currentYearMonth(): string {
   const now = new Date();
@@ -41,9 +41,11 @@ export function Analytics() {
     refetch,
   } = useSpendingByCategory(month, accountId);
 
+  // Spending data arrives as negative debits from the analytics aggregator.
+  // The display semantic of "total spending" is the magnitude of those debits.
   const total =
     spendingData && spendingData.length > 0
-      ? sumDecimalStrings(spendingData.map((row) => row.totalAmount))
+      ? absDecimalString(sumDecimalStrings(spendingData.map((row) => row.totalAmount)))
       : null;
 
   return (
