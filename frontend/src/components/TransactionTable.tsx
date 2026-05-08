@@ -85,7 +85,7 @@ function sortByDateDesc(transactions: TransactionResponse[]): TransactionRespons
 function buildReversedSet(transactions: TransactionResponse[]): Set<string> {
   const reversed = new Set<string>();
   for (const tx of transactions) {
-    if (tx.reversesTransactionId !== null) {
+    if (tx.reversesTransactionId != null) {
       reversed.add(tx.reversesTransactionId);
     }
   }
@@ -102,7 +102,7 @@ function buildReversedSet(transactions: TransactionResponse[]): Set<string> {
 function canReverse(tx: TransactionResponse, reversedIds: Set<string>): boolean {
   return (
     tx.status === 'POSTED' &&
-    tx.reversesTransactionId === null &&
+    tx.reversesTransactionId == null &&
     !reversedIds.has(tx.id)
   );
 }
@@ -142,7 +142,7 @@ export function TransactionTable({ transactions, onRefetch }: Props) {
       </TableHeader>
       <TableBody>
         {sorted.map((tx) => {
-          const isReversalRow = tx.reversesTransactionId !== null;
+          const isReversalRow = tx.reversesTransactionId != null;
           const isReversed = reversedIds.has(tx.id);
           const showReverse = showActions && canReverse(tx, reversedIds);
 
