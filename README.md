@@ -60,6 +60,10 @@ A microservices system implementing a personal finance ledger, built on Spring B
 | Metrics | Micrometer -> Prometheus |
 | API docs | springdoc-openapi 2.x |
 | Integration tests | Testcontainers |
+| Frontend | React 18 + TypeScript (strict) + Vite |
+| Frontend state/data | TanStack Query, Zustand |
+| Frontend UI | shadcn/ui (Radix primitives) + Tailwind |
+| Frontend tests | Vitest + React Testing Library, Playwright (e2e) |
 
 ## Running
 
