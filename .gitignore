@@ -28,3 +28,7 @@ docker-volumes/
 
 # Maven wrapper (downloaded)
 !.mvn/wrapper/maven-wrapper.jar
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
