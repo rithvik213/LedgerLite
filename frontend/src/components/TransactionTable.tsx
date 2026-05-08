@@ -32,7 +32,10 @@ function StatusBadge({ status }: { status: TransactionStatus }) {
 }
 
 function AmountCell({ amount }: { amount: string }) {
-  const isNegative = amount.startsWith('-');
+  // Treat "-0", "-0.0000" etc. as non-negative — only true negatives go red.
+  // We can't use parseFloat() here as a sign check because we need to preserve
+  // the BigDecimal-string contract elsewhere; a regex over the digits is enough.
+  const isNegative = amount.startsWith('-') && /[1-9]/.test(amount);
   return (
     <span
       className={
@@ -117,8 +120,10 @@ export function TransactionTable({ transactions, onRefetch }: Props) {
     );
   }
 
+  // Build the reversed-set from the unsorted list — sort order is irrelevant
+  // to membership, and constructing it before sorting keeps the dependency clear.
+  const reversedIds = buildReversedSet(transactions);
   const sorted = sortByDateDesc(transactions);
-  const reversedIds = buildReversedSet(sorted);
   const showActions = onRefetch !== undefined;
 
   return (

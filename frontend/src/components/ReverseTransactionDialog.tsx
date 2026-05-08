@@ -7,12 +7,13 @@ import { Label } from './ui/label';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from './ui/dialog';
-import { Toast, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from './ui/toast';
+import { Toast, ToastClose, ToastDescription, ToastTitle } from './ui/toast';
 import { newIdempotencyKey } from '../lib/idempotency';
 import { useReverseTransaction } from '../hooks/useTransactions';
 import type { TransactionResponse } from '../types/transaction';
@@ -111,10 +112,9 @@ export function ReverseTransactionDialog({ transaction, onRefetch, onSuccess }: 
             variant: 'destructive',
           });
         } else if (status === 503) {
-          // Do NOT consume the idempotency key on 503 — the backend never wrote
-          // a row, so the key is still "fresh". We surface the error inline so
-          // the user can close the dialog (which mints a new key on next open)
-          // and retry. Closing is intentionally the retry mechanism.
+          // Surface inline; closing+reopening mints a new key for the next attempt.
+          // See reverseTransaction() docs for the residual double-post caveat under
+          // partial backend failures (same envelope as createTransaction).
           setSubmitError('Account service unavailable. Close and try again.');
         } else {
           setSubmitError('Unexpected error. Please try again.');
@@ -128,7 +128,7 @@ export function ReverseTransactionDialog({ transaction, onRefetch, onSuccess }: 
   const isPending = mutation.isPending;
 
   return (
-    <ToastProvider>
+    <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button
@@ -145,14 +145,13 @@ export function ReverseTransactionDialog({ transaction, onRefetch, onSuccess }: 
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Reverse this transaction?</DialogTitle>
+            <DialogDescription>
+              This appends a reversal entry to your ledger. The original entry remains visible.
+              Both will show in your transaction history.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-2 text-sm text-muted-foreground">
-            <p>
-              This appends a reversal entry to your ledger. The original entry remains visible.
-              Both will show in your transaction history.
-            </p>
-
             <div className="grid gap-1.5">
               <Label htmlFor="reversal-reason">Reason (optional)</Label>
               <Input
@@ -215,8 +214,8 @@ export function ReverseTransactionDialog({ transaction, onRefetch, onSuccess }: 
             {toast.action.label}
           </Button>
         )}
+        <ToastClose />
       </Toast>
-      <ToastViewport />
-    </ToastProvider>
+    </>
   );
 }

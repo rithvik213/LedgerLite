@@ -79,8 +79,8 @@ export function useReverseTransaction() {
     }) => reverseTransaction(transactionId, body, idempotencyKey).then((r) => ({ ...r, accountId })),
     onSuccess: ({ accountId }) => {
       // Reversal posts a new row AND adjusts the account balance — invalidate both.
+      // list(accountId) already matches under the lists() prefix, no need to invalidate twice.
       queryClient.invalidateQueries({ queryKey: transactionKeys.list(accountId) });
-      queryClient.invalidateQueries({ queryKey: transactionKeys.lists() });
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
     },
   });

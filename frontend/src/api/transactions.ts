@@ -49,11 +49,15 @@ export async function listTransactions(accountId: string): Promise<TransactionRe
  * it across retries. On 200 (idempotent replay) the backend returns the
  * previously-created reversal — treat it as success.
  *
- * On 503 the account-service was unreachable during this fresh request. The
- * caller must NOT retry with the same idempotency key — the backend hasn't
- * stored the row so the key has not been "used". Generate a new key on retry
- * (which the dialog achieves by closing and reopening, minting a fresh key in
- * the useEffect).
+ * On 503 the account-service was unreachable on a fresh request. The backend
+ * MAY have stored a FAILED row (consuming the key) or rolled back (key still
+ * fresh) depending on where in the flow the failure landed — there is no
+ * client-side way to disambiguate. The dialog's "close and reopen" UX mints a
+ * new key for the next attempt; this is conservatively safe against returning
+ * a stored FAILED row but does NOT eliminate the residual double-post risk if
+ * the upstream account-service partially applied the balance before failing.
+ * That residual risk is the same as the existing createTransaction flow and
+ * is the rationale for the transactional-outbox note in the backend service.
  */
 export async function reverseTransaction(
   id: string,

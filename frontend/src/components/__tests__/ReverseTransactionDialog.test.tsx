@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import axios from 'axios';
 import { ReverseTransactionDialog } from '../ReverseTransactionDialog';
+import { ToastProvider, ToastViewport } from '../ui/toast';
 import type { TransactionResponse } from '../../types/transaction';
 
 // --- module mocks -----------------------------------------------------------
@@ -48,7 +49,16 @@ const REVERSAL_TX: TransactionResponse = {
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
+  // ToastProvider lives at the app root in production (App.tsx); the test wrapper
+  // mirrors that so the dialog's <Toast> children have a Radix context to attach to.
+  return (
+    <QueryClientProvider client={qc}>
+      <ToastProvider>
+        {children}
+        <ToastViewport />
+      </ToastProvider>
+    </QueryClientProvider>
+  );
 }
 
 function renderDialog(props: Partial<React.ComponentProps<typeof ReverseTransactionDialog>> = {}) {

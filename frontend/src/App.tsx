@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './auth/AuthProvider';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { AppShell } from './components/AppShell';
+import { ToastProvider, ToastViewport } from './components/ui/toast';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
@@ -35,9 +36,10 @@ const queryClient = new QueryClient({
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
+      <ToastProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
             {/* Public routes — no AppShell */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -57,8 +59,10 @@ export function App() {
               <Route path="/analytics" element={<Analytics />} />
             </Route>
           </Routes>
-        </AuthProvider>
-      </BrowserRouter>
+          </AuthProvider>
+        </BrowserRouter>
+        <ToastViewport />
+      </ToastProvider>
     </QueryClientProvider>
   );
 }
