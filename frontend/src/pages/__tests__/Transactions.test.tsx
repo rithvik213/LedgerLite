@@ -63,6 +63,7 @@ const mockTransactions: TransactionResponse[] = [
     idempotencyKey: 'key-1',
     status: 'POSTED',
     failureReason: null,
+    reversesTransactionId: null,
     createdAt: '2024-06-01T10:00:00Z',
   },
   {
@@ -75,6 +76,7 @@ const mockTransactions: TransactionResponse[] = [
     idempotencyKey: 'key-2',
     status: 'POSTED',
     failureReason: null,
+    reversesTransactionId: null,
     createdAt: '2024-06-02T10:00:00Z',
   },
 ];

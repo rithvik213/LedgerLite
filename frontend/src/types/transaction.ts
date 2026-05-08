@@ -22,4 +22,14 @@ export interface TransactionResponse {
   failureReason: string | null;
   /** ISO-8601 instant string */
   createdAt: string;
+  /**
+   * Non-null only on reversal rows. References the original transaction that
+   * this row reverses. The backend's append-only ledger model never mutates
+   * the original — a reversal is a new row with negated amount.
+   */
+  reversesTransactionId: string | null;
+}
+
+export interface ReverseTransactionRequest {
+  reason?: string;
 }

@@ -15,6 +15,7 @@ function makeTransaction(overrides: Partial<TransactionResponse> = {}): Transact
     status: 'POSTED',
     failureReason: null,
     createdAt: '2024-03-15T12:00:00Z',
+    reversesTransactionId: null,
     ...overrides,
   };
 }

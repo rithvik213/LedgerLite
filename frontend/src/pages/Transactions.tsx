@@ -139,7 +139,10 @@ export function Transactions() {
         )}
 
         {selectedAccountId && txQuery.isSuccess && (
-          <TransactionTable transactions={filteredTransactions} />
+          <TransactionTable
+            transactions={filteredTransactions}
+            onRefetch={() => txQuery.refetch()}
+          />
         )}
       </div>
     </div>
