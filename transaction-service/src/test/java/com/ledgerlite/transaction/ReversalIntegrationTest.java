@@ -94,8 +94,9 @@ class ReversalIntegrationTest {
         assertThat(reversal.get().getAmount()).isEqualByComparingTo(new BigDecimal("-100.00"));
         assertThat(reversal.get().getReversesTransactionId()).isEqualTo(original.getId());
         assertThat(reversal.get().getDescription())
-                .contains("Reversal of " + original.getId())
-                .contains("user-correction");
+                .startsWith("Reversal")
+                .contains("user-correction")
+                .doesNotContain(original.getId().toString());
         // Original row must be unchanged
         var unchanged = transactionRepository.findById(original.getId()).orElseThrow();
         assertThat(unchanged.getStatus()).isEqualTo(TransactionStatus.POSTED);

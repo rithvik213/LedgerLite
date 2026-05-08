@@ -137,10 +137,22 @@ public class TransactionService {
                     "already_reversed: transaction " + originalId + " has already been reversed");
         });
 
-        String description = "Reversal of " + originalId
-                + (request != null && request.reason() != null && !request.reason().isBlank()
-                   ? ": " + request.reason()
-                   : "");
+        // Build a human-readable description. The structural reversesTransactionId field
+        // already encodes the link to the original, so we don't put the UUID in the text.
+        String reason = request != null ? request.reason() : null;
+        String origDesc = original.getDescription();
+        String description;
+        if (reason != null && !reason.isBlank()) {
+            description = "Reversal: " + reason.trim();
+        } else if (origDesc != null && !origDesc.isBlank()) {
+            description = "Reversal of " + origDesc;
+        } else {
+            description = "Reversal";
+        }
+        // VARCHAR(500) cap on the column — defensive truncate.
+        if (description.length() > 500) {
+            description = description.substring(0, 500);
+        }
 
         Transaction reversal = new Transaction();
         reversal.setAccountId(original.getAccountId());
