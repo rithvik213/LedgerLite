@@ -1,4 +1,6 @@
 # Full-stack deployment — ready for Portainer Stack
+# Eureka and Config Server removed; service discovery is via explicit URLs,
+# config is via env vars (K8s: ConfigMap + Secret; compose: environment block).
 services:
   # --- Infrastructure ---
   postgres:
@@ -101,57 +103,19 @@ services:
       - ledgerlite
     mem_limit: 256m
 
-  # --- Services ---
-  discovery-server:
-    build: ./discovery-server
-    container_name: ledgerlite-discovery
-    ports:
-      - "8761:8761"
-    networks:
-      - ledgerlite
-    mem_limit: 512m
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8761/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  config-server:
-    build: ./config-server
-    container_name: ledgerlite-config
-    ports:
-      - "8888:8888"
-    environment:
-      EUREKA_URL: http://discovery-server:8761/eureka/
-      CONFIG_REPO_PATH: file:/config-repo
-    volumes:
-      - ./config-repo:/config-repo:ro
-    depends_on:
-      discovery-server:
-        condition: service_healthy
-    networks:
-      - ledgerlite
-    mem_limit: 512m
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8888/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
+  # --- Business Services ---
   auth-service:
     build: ./auth-service
     container_name: ledgerlite-auth
     ports:
       - "8081:8081"
     environment:
-      EUREKA_URL: http://discovery-server:8761/eureka/
-      CONFIG_SERVER_URL: http://config-server:8888
-      DB_HOST: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/auth_db
+      SPRING_DATASOURCE_USERNAME: ledgerlite
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ledgerlite}
       JWT_SECRET: ${JWT_SECRET:-super-secret-dev-key-that-is-at-least-256-bits-long-for-hs256}
       ZIPKIN_URL: http://zipkin:9411
     depends_on:
-      config-server:
-        condition: service_healthy
       postgres:
         condition: service_healthy
     networks:
@@ -164,14 +128,12 @@ services:
     ports:
       - "8082:8082"
     environment:
-      EUREKA_URL: http://discovery-server:8761/eureka/
-      CONFIG_SERVER_URL: http://config-server:8888
-      DB_HOST: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/account_db
+      SPRING_DATASOURCE_USERNAME: ledgerlite
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ledgerlite}
       JWT_SECRET: ${JWT_SECRET:-super-secret-dev-key-that-is-at-least-256-bits-long-for-hs256}
       ZIPKIN_URL: http://zipkin:9411
     depends_on:
-      config-server:
-        condition: service_healthy
       postgres:
         condition: service_healthy
     networks:
@@ -184,18 +146,20 @@ services:
     ports:
       - "8083:8083"
     environment:
-      EUREKA_URL: http://discovery-server:8761/eureka/
-      CONFIG_SERVER_URL: http://config-server:8888
-      DB_HOST: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/transaction_db
+      SPRING_DATASOURCE_USERNAME: ledgerlite
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ledgerlite}
       KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      # account-service is reachable via its compose service name
+      ACCOUNT_SERVICE_URL: http://account-service:8082
       JWT_SECRET: ${JWT_SECRET:-super-secret-dev-key-that-is-at-least-256-bits-long-for-hs256}
       ZIPKIN_URL: http://zipkin:9411
     depends_on:
-      config-server:
-        condition: service_healthy
       postgres:
         condition: service_healthy
       redpanda:
+        condition: service_started
+      account-service:
         condition: service_started
     networks:
       - ledgerlite
@@ -207,15 +171,13 @@ services:
     ports:
       - "8084:8084"
     environment:
-      EUREKA_URL: http://discovery-server:8761/eureka/
-      CONFIG_SERVER_URL: http://config-server:8888
-      DB_HOST: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/analytics_db
+      SPRING_DATASOURCE_USERNAME: ledgerlite
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ledgerlite}
       KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
       JWT_SECRET: ${JWT_SECRET:-super-secret-dev-key-that-is-at-least-256-bits-long-for-hs256}
       ZIPKIN_URL: http://zipkin:9411
     depends_on:
-      config-server:
-        condition: service_healthy
       postgres:
         condition: service_healthy
       redpanda:
@@ -230,16 +192,24 @@ services:
     ports:
       - "8080:8080"
     environment:
-      EUREKA_URL: http://discovery-server:8761/eureka/
-      CONFIG_SERVER_URL: http://config-server:8888
+      AUTH_SERVICE_URL: http://auth-service:8081
+      ACCOUNT_SERVICE_URL: http://account-service:8082
+      TRANSACTION_SERVICE_URL: http://transaction-service:8083
+      ANALYTICS_SERVICE_URL: http://analytics-service:8084
       JWT_SECRET: ${JWT_SECRET:-super-secret-dev-key-that-is-at-least-256-bits-long-for-hs256}
       ZIPKIN_URL: http://zipkin:9411
       REDIS_HOST: redis
     depends_on:
-      config-server:
-        condition: service_healthy
       redis:
         condition: service_healthy
+      auth-service:
+        condition: service_started
+      account-service:
+        condition: service_started
+      transaction-service:
+        condition: service_started
+      analytics-service:
+        condition: service_started
     networks:
       - ledgerlite
     mem_limit: 512m

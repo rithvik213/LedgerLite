@@ -8,7 +8,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import java.util.Map;
 import java.util.UUID;
 
-@FeignClient(name = "account-service")
+/**
+ * Feign client for account-service.
+ *
+ * URL is env-driven rather than Eureka-resolved so the service is portable
+ * to any runtime (docker-compose, K8s, local dev) without a service registry.
+ * In K8s, ACCOUNT_SERVICE_URL=http://account-service:8082 (the K8s Service DNS name).
+ * In docker-compose, same value pointing at the compose service name.
+ */
+@FeignClient(name = "account-service", url = "${ledgerlite.account-service.url}")
 public interface AccountServiceClient {
 
     @GetMapping("/api/accounts/{id}")

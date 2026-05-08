@@ -4,14 +4,17 @@ server:
 spring:
   application:
     name: api-gateway
-  config:
-    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
   cloud:
     gateway:
+      discovery:
+        locator:
+          # Eureka-based discovery routing is disabled; routes are explicit below.
+          # In K8s, service DNS names are injected via env vars.
+          enabled: false
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
         - name: RequestRateLimiter
@@ -22,43 +25,73 @@ spring:
             key-resolver: "#{@ipKeyResolver}"
       routes:
         - id: auth-service
-          uri: lb://auth-service
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/auth/**
+
         - id: account-service
-          uri: lb://account-service
+          uri: ${ACCOUNT_SERVICE_URL:http://localhost:8082}
           predicates:
             - Path=/api/accounts/**
+
         - id: transaction-service
-          uri: lb://transaction-service
+          uri: ${TRANSACTION_SERVICE_URL:http://localhost:8083}
           predicates:
             - Path=/api/transactions/**
+
         - id: analytics-service
-          uri: lb://analytics-service
+          uri: ${ANALYTICS_SERVICE_URL:http://localhost:8084}
           predicates:
             - Path=/api/analytics/**
 
-        # Swagger UI routes per service
+        # Swagger UI routes per service (direct, no lb://)
         - id: auth-service-docs
-          uri: lb://auth-service
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/auth-service/v3/api-docs/**
+
         - id: account-service-docs
-          uri: lb://account-service
+          uri: ${ACCOUNT_SERVICE_URL:http://localhost:8082}
           predicates:
             - Path=/account-service/v3/api-docs/**
+
         - id: transaction-service-docs
-          uri: lb://transaction-service
+          uri: ${TRANSACTION_SERVICE_URL:http://localhost:8083}
           predicates:
             - Path=/transaction-service/v3/api-docs/**
+
         - id: analytics-service-docs
-          uri: lb://analytics-service
+          uri: ${ANALYTICS_SERVICE_URL:http://localhost:8084}
           predicates:
             - Path=/analytics-service/v3/api-docs/**
 
-# CORS allowed origins. Override in production by setting:
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  tracing:
+    sampling:
+      probability: 1.0  # ~0.1 in prod
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411}/api/v2/spans
+
+# CORS allowed origins. Override in production:
 #   LEDGERLITE_CORS_ALLOWED_ORIGINS=https://app.example.com
-# Multiple origins: comma-separated  e.g. "https://app.example.com,https://admin.example.com"
 ledgerlite:
+  jwt:
+    secret: ${JWT_SECRET:super-secret-dev-key-that-is-at-least-256-bits-long-for-hs256}
+    issuer: ${JWT_ISSUER:ledgerlite}
   cors:
     allowed-origins: ${LEDGERLITE_CORS_ALLOWED_ORIGINS:http://localhost:5173}

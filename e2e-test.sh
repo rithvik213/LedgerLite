@@ -170,7 +170,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH "$BASE_URL/api/accounts/$ACCT_ID
 HTTP_CODE=$(echo "$RESPONSE" | tail -1)
 BODY=$(echo "$RESPONSE" | sed '$d')
 assert_status "Deposit 1000" "200" "$HTTP_CODE"
-assert_json_field "Balance is 1000 after deposit" "$BODY" "balance" "1000.0"
+assert_json_field "Balance is 1000 after deposit" "$BODY" "balance" "1000.0000"
 
 # Optimistic lock failure (stale version)
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH "$BASE_URL/api/accounts/$ACCT_ID/balance" \
@@ -257,11 +257,11 @@ fi
 RESPONSE=$(curl -s "$BASE_URL/api/accounts/$ACCT_ID" \
     -H "Authorization: Bearer $TOKEN")
 BALANCE=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['balance'])" 2>/dev/null)
-if [ "$BALANCE" = "924.5" ]; then
+if [ "$BALANCE" = "924.5000" ]; then
     echo -e "  ${GREEN}PASS${NC} Account balance is 924.50 (1000 - 50 - 25.50)"
     PASS=$((PASS + 1))
 else
-    echo -e "  ${RED}FAIL${NC} Expected balance 924.5, got $BALANCE"
+    echo -e "  ${RED}FAIL${NC} Expected balance 924.5000, got $BALANCE"
     FAIL=$((FAIL + 1))
 fi
 
@@ -298,11 +298,11 @@ data = json.load(sys.stdin)
 food = [d for d in data if d['category']=='FOOD']
 print(food[0]['totalAmount'] if food else 'MISSING')
 " 2>/dev/null)
-if [ "$FOOD_TOTAL" = "-50.0" ]; then
+if [ "$FOOD_TOTAL" = "-50.0000" ]; then
     echo -e "  ${GREEN}PASS${NC} FOOD spending is -50.00"
     PASS=$((PASS + 1))
 else
-    echo -e "  ${RED}FAIL${NC} Expected FOOD total -50.0, got $FOOD_TOTAL"
+    echo -e "  ${RED}FAIL${NC} Expected FOOD total -50.0000, got $FOOD_TOTAL"
     FAIL=$((FAIL + 1))
 fi
 

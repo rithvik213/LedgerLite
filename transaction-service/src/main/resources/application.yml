@@ -4,12 +4,10 @@ server:
 spring:
   application:
     name: transaction-service
-  config:
-    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/transaction_db
-    username: ${DB_USER:ledgerlite}
-    password: ${DB_PASSWORD:ledgerlite}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/transaction_db}
+    username: ${SPRING_DATASOURCE_USERNAME:ledgerlite}
+    password: ${SPRING_DATASOURCE_PASSWORD:ledgerlite}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -21,6 +19,38 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,loggers,env
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  tracing:
+    sampling:
+      probability: 1.0  # ~0.1 in prod
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411}/api/v2/spans
+
+ledgerlite:
+  jwt:
+    secret: ${JWT_SECRET:super-secret-dev-key-that-is-at-least-256-bits-long-for-hs256}
+    ttl: ${JWT_TTL:3600000}
+    issuer: ${JWT_ISSUER:ledgerlite}
+  # K8s: set ACCOUNT_SERVICE_URL=http://account-service:8082
+  # docker-compose: set ACCOUNT_SERVICE_URL=http://account-service:8082
+  account-service:
+    url: ${ACCOUNT_SERVICE_URL:http://localhost:8082}
 
 resilience4j:
   circuitbreaker:
