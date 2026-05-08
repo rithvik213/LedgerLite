@@ -120,6 +120,8 @@ docker compose -f docker-compose.infra.yml down
 
 ### Try it out
 
+Requires `jq` for JSON parsing (`brew install jq`). If any step prints `null`, the previous step failed — re-run it and inspect the response.
+
 ```bash
 # Register a user
 curl -s -X POST http://localhost:8080/api/auth/register \
@@ -144,11 +146,18 @@ curl -s -X PATCH http://localhost:8080/api/accounts/$ACCOUNT_ID/balance \
   -d '{"delta":1000,"expectedVersion":0}'
 
 # Post a transaction
-curl -s -X POST http://localhost:8080/api/transactions \
+TX_ID=$(curl -s -X POST http://localhost:8080/api/transactions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Idempotency-Key: $(uuidgen)" \
-  -d "{\"accountId\":\"$ACCOUNT_ID\",\"amount\":-35.50,\"category\":\"FOOD\",\"description\":\"Lunch\"}"
+  -d "{\"accountId\":\"$ACCOUNT_ID\",\"amount\":-35.50,\"category\":\"FOOD\",\"description\":\"Lunch\"}" | jq -r '.id')
+
+# Reverse it (append-only ledger: original row stays, a negated row is appended)
+curl -s -X POST http://localhost:8080/api/transactions/$TX_ID/reverse \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"reason":"wrong amount"}'
 
 # Check spending analytics (wait a few seconds for Kafka processing)
 sleep 3
@@ -175,6 +184,7 @@ All requests go through the API gateway on port 8080. Requires `jq` for JSON par
 - **Tracing at 100% sampling.** Great for dev/demo. Production would sample ~10% to control overhead.
 - **Duplicated JWT validation** across services instead of a shared library. Avoids version coordination overhead at this scale. A shared lib makes sense at 10+ services.
 - **Redis-backed rate limiting** at the gateway (20 req/sec sustained, burst to 40). Uses Spring Cloud Gateway's built-in `RequestRateLimiter` with Redis token buckets, so rate limits are shared across multiple gateway instances. Keyed by client IP.
+- **Append-only ledger for transaction reversals.** Transactions are immutable. To "undo" a transaction, `POST /api/transactions/{id}/reverse` inserts a new row with negated amount that references the original via `reversesTransactionId`; the original is never mutated. A partial unique index (`uq_one_reversal_per_tx` on `reverses_transaction_id`) is the definitive guard against concurrent double-reversal — the DB rejects the second insert with a constraint violation that the controller advice maps to `409 already_reversed`. This is how real ledger systems handle corrections (reversal-then-new-entry rather than mutation), and it gives analytics a self-correcting Kafka stream: the negated row flows through the same `transactions.posted` pipeline and offsets the original aggregate.
 
 ## Development Workflow
 
