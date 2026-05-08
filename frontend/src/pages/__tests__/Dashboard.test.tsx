@@ -104,6 +104,7 @@ const MOCK_TRANSACTIONS: TransactionResponse[] = [
     idempotencyKey: 'k1',
     status: 'POSTED',
     failureReason: null,
+    reversesTransactionId: null,
     createdAt: '2024-06-10T10:00:00Z',
   },
   {
@@ -116,6 +117,7 @@ const MOCK_TRANSACTIONS: TransactionResponse[] = [
     idempotencyKey: 'k2',
     status: 'POSTED',
     failureReason: null,
+    reversesTransactionId: null,
     createdAt: '2024-06-09T08:00:00Z',
   },
 ];
@@ -257,6 +259,7 @@ describe('Dashboard page', () => {
       idempotencyKey: `k${i}`,
       status: 'POSTED' as const,
       failureReason: null,
+      reversesTransactionId: null,
       createdAt: new Date(2024, 5, i + 1).toISOString(),
     }));
 

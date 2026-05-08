@@ -3,8 +3,9 @@ import {
   createTransaction,
   getTransaction,
   listTransactions,
+  reverseTransaction,
 } from '../api/transactions';
-import type { CreateTransactionRequest } from '../types/transaction';
+import type { CreateTransactionRequest, ReverseTransactionRequest } from '../types/transaction';
 import { ACCOUNTS_QUERY_KEY } from './useAccounts';
 
 export const transactionKeys = {
@@ -56,6 +57,30 @@ export function useCreateTransaction() {
       // account-service. Invalidate the accounts cache so Dashboard's
       // total balance, AccountCard balances, and AccountDetail all refetch
       // — otherwise users see stale balances after posting a transaction.
+      queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
+    },
+  });
+}
+
+export function useReverseTransaction() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      transactionId,
+      accountId,
+      body,
+      idempotencyKey,
+    }: {
+      transactionId: string;
+      accountId: string;
+      body: ReverseTransactionRequest;
+      idempotencyKey: string;
+    }) => reverseTransaction(transactionId, body, idempotencyKey).then((r) => ({ ...r, accountId })),
+    onSuccess: ({ accountId }) => {
+      // Reversal posts a new row AND adjusts the account balance — invalidate both.
+      queryClient.invalidateQueries({ queryKey: transactionKeys.list(accountId) });
+      queryClient.invalidateQueries({ queryKey: transactionKeys.lists() });
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
     },
   });

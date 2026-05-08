@@ -49,6 +49,7 @@ const mockTransaction: TransactionResponse = {
   status: 'POSTED',
   failureReason: null,
   createdAt: '2024-03-15T12:00:00Z',
+  reversesTransactionId: null,
 };
 
 function wrapper({ children }: { children: React.ReactNode }) {
