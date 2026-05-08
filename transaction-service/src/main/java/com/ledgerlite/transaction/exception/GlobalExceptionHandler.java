@@ -5,7 +5,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -33,15 +32,21 @@ public class GlobalExceptionHandler {
      * Maps the unique-index constraint violation from the partial index uq_one_reversal_per_tx
      * to a 409 Conflict. This fires when two concurrent reversal requests for the same original
      * transaction race past the pre-flight check and both try to insert.
+     *
+     * Other DataIntegrityViolations (e.g. concurrent createTransaction inserts that race the
+     * idempotency-key check) must NOT be flattened to 409 — that would mask the existing
+     * idempotency contract on POST /api/transactions, which expects an idempotent 200 reply.
+     * Rethrow anything we don't explicitly recognize so Spring's default 500 path handles it.
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
-    @ResponseStatus(HttpStatus.CONFLICT)
     public ProblemDetail handleDataIntegrity(DataIntegrityViolationException ex) {
-        String detail = ex.getMessage() != null && ex.getMessage().contains("uq_one_reversal_per_tx")
-                ? "already_reversed: a reversal already exists for this transaction"
-                : "A database constraint was violated";
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, detail);
-        problem.setTitle("Conflict");
-        return problem;
+        String message = ex.getMessage();
+        if (message != null && message.contains("uq_one_reversal_per_tx")) {
+            ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                    "already_reversed: a reversal already exists for this transaction");
+            problem.setTitle("Conflict");
+            return problem;
+        }
+        throw ex;
     }
 }

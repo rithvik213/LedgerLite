@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -91,12 +92,26 @@ public class TransactionService {
      * The partial unique index (uq_one_reversal_per_tx) enforces at-most-one-reversal at the
      * DB layer, making concurrent reversal races safe.
      */
+    // @Transactional binds the PENDING insert and the terminal-status save into one unit of
+    // work. If the JVM crashes between the PENDING save and the account-service call, the
+    // transaction never commits and we don't leak an orphan PENDING row that would hold
+    // uq_one_reversal_per_tx forever. The catch block swallows the exception and saves FAILED,
+    // so a normal failure still commits the FAILED row for observability.
+    @Transactional
     public TransactionResponse reverseTransaction(UUID requestingUserId, String idempotencyKey,
                                                    UUID originalId, ReverseTransactionRequest request) {
         // Idempotency: scoped by userId to prevent cross-tenant disclosure on replayed keys.
         var existingByKey = transactionRepository.findByIdempotencyKeyAndUserId(idempotencyKey, requestingUserId);
         if (existingByKey.isPresent()) {
-            return TransactionResponse.from(existingByKey.get());
+            // Cross-endpoint collision guard: a key previously used on POST /api/transactions
+            // would otherwise be replayed here and the create row returned as if it were a
+            // reversal. Only honor the replay when it actually points at this same original.
+            Transaction existing = existingByKey.get();
+            if (!originalId.equals(existing.getReversesTransactionId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Idempotency-Key was previously used for a different operation");
+            }
+            return TransactionResponse.from(existing);
         }
 
         Transaction original = transactionRepository.findById(originalId)

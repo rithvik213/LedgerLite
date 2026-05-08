@@ -63,12 +63,9 @@ public class TransactionController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Idempotency-Key header is required");
         }
 
-        // Idempotency replay scoped by userId — see create() for the cross-tenant rationale.
-        var existing = transactionRepository.findByIdempotencyKeyAndUserId(idempotencyKey, UUID.fromString(userId));
-        if (existing.isPresent()) {
-            return ResponseEntity.ok(TransactionResponse.from(existing.get()));
-        }
-
+        // Note: idempotency replay handling for the reverse path lives in the service layer
+        // because it must also assert the existing row is a reversal of this same original
+        // (cross-endpoint collision guard). Don't short-circuit here.
         TransactionResponse response = transactionService.reverseTransaction(
                 UUID.fromString(userId), idempotencyKey, id, request);
 
