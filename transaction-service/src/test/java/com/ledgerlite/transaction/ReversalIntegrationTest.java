@@ -164,10 +164,13 @@ class ReversalIntegrationTest {
     }
 
     // -------------------------------------------------------------------------
-    // Test 4: Cross-user — user B cannot reverse user A's transaction — 403
+    // Test 4: Cross-user — user B cannot reverse user A's transaction — 404
+    // (Returns 404 rather than 403 to avoid leaking transaction-id existence
+    // across users; the lookup is user-scoped so the row is indistinguishable
+    // from non-existent.)
     // -------------------------------------------------------------------------
     @Test
-    void shouldReturn403WhenReversalBelongsToDifferentUser() throws Exception {
+    void shouldReturn404WhenReversalBelongsToDifferentUser() throws Exception {
         Transaction original = seedPostedTransaction(USER_A, new BigDecimal("200.00"), "UTILITIES");
 
         String userBToken = buildJwt(UUID.randomUUID()); // a completely different user
@@ -177,7 +180,7 @@ class ReversalIntegrationTest {
                         .header("Authorization", "Bearer " + userBToken)
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .content("{}"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
 
         // No reversal row should have been created
         assertThat(transactionRepository.count()).isEqualTo(1);

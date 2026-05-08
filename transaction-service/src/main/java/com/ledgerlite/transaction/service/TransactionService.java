@@ -109,15 +109,12 @@ public class TransactionService {
             return TransactionResponse.from(existing);
         }
 
-        Transaction original = transactionRepository.findById(originalId)
+        // Lookup is scoped by userId so a transaction belonging to another user is indistinguishable
+        // from a non-existent transaction. Returning 404 (rather than 403) avoids leaking the
+        // existence of other users' transaction IDs to attackers probing the namespace.
+        Transaction original = transactionRepository.findByIdAndUserId(originalId, requestingUserId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Transaction not found: " + originalId));
-
-        // Authorization: prevent user A from reversing user B's transaction.
-        if (!original.getUserId().equals(requestingUserId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Transaction does not belong to the authenticated user");
-        }
+                        "Transaction not found"));
 
         // Only POSTED transactions are reversible. PENDING/FAILED have not settled — leave them
         // to their own state machine rather than creating a dangling reversal.

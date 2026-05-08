@@ -4,6 +4,7 @@ import com.ledgerlite.transaction.dto.CreateTransactionRequest;
 import com.ledgerlite.transaction.dto.ReverseTransactionRequest;
 import com.ledgerlite.transaction.dto.TransactionResponse;
 import com.ledgerlite.transaction.entity.Transaction;
+import com.ledgerlite.transaction.entity.TransactionStatus;
 import com.ledgerlite.transaction.repository.TransactionRepository;
 import com.ledgerlite.transaction.service.TransactionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -52,7 +53,7 @@ public class TransactionController {
                 UUID.fromString(userId), idempotencyKey, request);
 
         // Standardized FAILED detection — same predicate the reverse endpoint uses.
-        HttpStatus status = response.status() == com.ledgerlite.transaction.entity.TransactionStatus.FAILED
+        HttpStatus status = response.status() == TransactionStatus.FAILED
                 ? HttpStatus.UNPROCESSABLE_ENTITY
                 : HttpStatus.CREATED;
         return ResponseEntity.status(status).body(response);
@@ -69,8 +70,8 @@ public class TransactionController {
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Reversal created and POSTED"),
         @ApiResponse(responseCode = "200", description = "Idempotent replay — body is the previously stored reversal row regardless of its terminal status"),
-        @ApiResponse(responseCode = "403", description = "Original transaction belongs to a different user"),
-        @ApiResponse(responseCode = "404", description = "Original transaction not found"),
+        @ApiResponse(responseCode = "400", description = "Idempotency-Key header missing or blank"),
+        @ApiResponse(responseCode = "404", description = "Original transaction not found (or belongs to a different user — indistinguishable by design to avoid existence disclosure)"),
         @ApiResponse(responseCode = "409", description = "Already reversed, or Idempotency-Key was used for a different operation"),
         @ApiResponse(responseCode = "422", description = "Original is not POSTED, or attempt to reverse a reversal"),
         @ApiResponse(responseCode = "503", description = "Account-service unreachable on a fresh request")
@@ -102,7 +103,7 @@ public class TransactionController {
 
         // A reversal persisted as FAILED means account-service was unreachable — surface as 503
         // on a *fresh* request so the client knows to retry. Replays already returned 200 above.
-        if (response.status() == com.ledgerlite.transaction.entity.TransactionStatus.FAILED) {
+        if (response.status() == TransactionStatus.FAILED) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
         }
 
