@@ -155,9 +155,7 @@ export function TransactionTable({ transactions, onRefetch }: Props) {
                 {formatDate(tx.createdAt)}
               </TableCell>
               <TableCell className="max-w-xs text-sm">
-                <span className={isReversalRow ? 'line-through text-muted-foreground' : undefined}>
-                  {tx.description ?? <span className="italic text-muted-foreground">—</span>}
-                </span>
+                {tx.description ?? <span className="italic text-muted-foreground">—</span>}
               </TableCell>
               <TableCell className="text-sm">{tx.category ?? '—'}</TableCell>
               <TableCell className="text-right">

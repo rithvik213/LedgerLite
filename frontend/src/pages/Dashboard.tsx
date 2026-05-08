@@ -1,4 +1,4 @@
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { Wallet, TrendingDown, PlusCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -112,6 +112,7 @@ function SpendingCard({
 
 export function Dashboard() {
   const month = currentMonth();
+  const queryClient = useQueryClient();
 
   const {
     data: accounts = [],
@@ -271,7 +272,10 @@ export function Dashboard() {
                 </p>
               )}
               {!txLoading && !txError && (
-                <TransactionTable transactions={recentTransactions} />
+                <TransactionTable
+                  transactions={recentTransactions}
+                  onRefetch={() => queryClient.invalidateQueries({ queryKey: transactionKeys.lists() })}
+                />
               )}
             </CardContent>
           </Card>

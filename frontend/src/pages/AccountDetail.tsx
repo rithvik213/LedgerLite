@@ -186,7 +186,7 @@ function AccountDetailContent({
                   <p className="text-sm">No transactions yet for this account.</p>
                 </div>
               ) : (
-                <TransactionTable transactions={transactions} />
+                <TransactionTable transactions={transactions} onRefetch={() => txRefetch()} />
               )
             )}
           </CardContent>
