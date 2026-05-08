@@ -175,3 +175,19 @@ All requests go through the API gateway on port 8080. Requires `jq` for JSON par
 - **Tracing at 100% sampling.** Great for dev/demo. Production would sample ~10% to control overhead.
 - **Duplicated JWT validation** across services instead of a shared library. Avoids version coordination overhead at this scale. A shared lib makes sense at 10+ services.
 - **Redis-backed rate limiting** at the gateway (20 req/sec sustained, burst to 40). Uses Spring Cloud Gateway's built-in `RequestRateLimiter` with Redis token buckets, so rate limits are shared across multiple gateway instances. Keyed by client IP.
+
+## Development Workflow
+
+This repo uses a Claude Code-driven workflow with specialist subagents and review gates.
+
+### Pre-push review hook
+
+`.githooks/pre-push` runs the Claude `code-reviewer` agent against the diff being pushed and blocks on `block` / `changes-requested` verdicts. To enable in your local clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Bypass for WIP pushes: `SKIP_CLAUDE_REVIEW=1 git push` (or `git push --no-verify`).
+
+Each push invokes the Claude API and consumes tokens — skip on noisy WIP pushes, run for real submissions.

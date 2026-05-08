@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# Pre-push hook: runs the Claude code-reviewer agent against the diff being pushed.
+# Blocks the push on a `block` or `changes-requested` verdict.
+#
+# Bypass:
+#   SKIP_CLAUDE_REVIEW=1 git push
+#   git push --no-verify
+#
+# Note: each push invokes the Claude API and consumes tokens. Skip on WIP pushes.
+
+set -u
+
+if [ "${SKIP_CLAUDE_REVIEW:-0}" = "1" ]; then
+  echo "[pre-push] SKIP_CLAUDE_REVIEW=1 — skipping Claude review."
+  exit 0
+fi
+
+if ! command -v claude >/dev/null 2>&1; then
+  echo "[pre-push] 'claude' CLI not found — skipping review (install Claude Code to enable)."
+  exit 0
+fi
+
+remote="$1"
+zero="0000000000000000000000000000000000000000"
+exit_code=0
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # Branch deletion — nothing to review
+  if [ "$local_sha" = "$zero" ]; then
+    continue
+  fi
+
+  if [ "$remote_sha" = "$zero" ]; then
+    # New branch on remote — diff against the default branch
+    base_branch=$(git symbolic-ref "refs/remotes/${remote}/HEAD" 2>/dev/null | sed "s|refs/remotes/${remote}/||")
+    base_branch=${base_branch:-main}
+    range="${remote}/${base_branch}...${local_sha}"
+  else
+    range="${remote_sha}...${local_sha}"
+  fi
+
+  diff=$(git diff "$range" 2>/dev/null || true)
+  if [ -z "$diff" ]; then
+    echo "[pre-push] No diff for ${range}, skipping."
+    continue
+  fi
+
+  diff_lines=$(echo "$diff" | wc -l | tr -d ' ')
+  echo "[pre-push] Reviewing ${range} (${diff_lines} diff lines) with Claude code-reviewer..."
+
+  # Cap very large diffs — review would be unfocused and burn tokens
+  if [ "$diff_lines" -gt 5000 ]; then
+    echo "[pre-push] Diff is ${diff_lines} lines (>5000) — too large for a useful auto-review."
+    echo "[pre-push] Run /review-branch interactively, or skip with SKIP_CLAUDE_REVIEW=1."
+    exit 1
+  fi
+
+  prompt=$(cat <<EOF
+Use the code-reviewer subagent to review the diff below. The reviewer must:
+- Cite file:line for every concrete finding
+- Distinguish blocking from nits
+- End your final response with EXACTLY this line and nothing after it:
+VERDICT: <ship|ship-with-nits|changes-requested|block>
+
+Diff range: ${range}
+
+\`\`\`diff
+${diff}
+\`\`\`
+EOF
+)
+
+  result=$(printf '%s' "$prompt" | claude -p --output-format text 2>&1) || {
+    echo "[pre-push] claude CLI failed — skipping review (fail-open)."
+    echo "$result"
+    continue
+  }
+
+  echo "$result"
+  echo ""
+
+  verdict=$(echo "$result" | grep -oE "VERDICT: (ship|ship-with-nits|changes-requested|block)" | tail -1 | sed "s/VERDICT: //")
+
+  case "$verdict" in
+    ship|ship-with-nits)
+      echo "[pre-push] ✓ Review verdict: ${verdict}"
+      ;;
+    changes-requested|block)
+      echo ""
+      echo "[pre-push] ✗ Review verdict: ${verdict} — push BLOCKED."
+      echo "[pre-push] Address the findings above, or bypass with: SKIP_CLAUDE_REVIEW=1 git push"
+      exit_code=1
+      ;;
+    *)
+      echo "[pre-push] ⚠ Could not parse verdict from review output — failing open."
+      ;;
+  esac
+done
+
+exit $exit_code
