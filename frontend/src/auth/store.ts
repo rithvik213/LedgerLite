@@ -26,7 +26,13 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       setAuth: (token, user) => set({ token, user }),
-      clearAuth: () => set({ token: null, user: null }),
+      clearAuth: () => {
+        set({ token: null, user: null });
+        // Belt-and-suspenders: persist middleware writes nulls back to
+        // localStorage, but explicitly removing the key leaves no residue
+        // for browser extensions or XSS payloads to inspect post-logout.
+        localStorage.removeItem(TOKEN_KEY);
+      },
     }),
     {
       name: TOKEN_KEY,

@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../auth/AuthProvider';
 import { Button } from './ui/button';
 
@@ -17,9 +18,13 @@ const NAV_ITEMS: NavItem[] = [
 export function AppShell() {
   const { user, clearAuth } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   function handleLogout() {
     clearAuth();
+    // Drop cached server data so a subsequent login as a different user
+    // never sees the previous user's accounts/transactions in flight.
+    queryClient.clear();
     navigate('/login', { replace: true });
   }
 

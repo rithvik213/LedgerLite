@@ -15,9 +15,16 @@ export const apiClient = axios.create({
 // unexpected 401s on the login page itself.
 const PUBLIC_PATHS = ['/api/auth/login', '/api/auth/register'];
 
+// Match the path *exactly* (allowing a query string), not by prefix — a
+// hypothetical future `/api/auth/login-sso` should NOT inherit public status.
+function isPublicPath(url: string): boolean {
+  const path = url.split('?', 1)[0];
+  return PUBLIC_PATHS.includes(path);
+}
+
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const url = config.url ?? '';
-  const isPublic = PUBLIC_PATHS.some((p) => url.startsWith(p));
+  const isPublic = isPublicPath(url);
 
   if (!isPublic) {
     // Read directly from the store singleton so we don't need React context
@@ -37,8 +44,7 @@ apiClient.interceptors.response.use(
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       const url = error.config?.url ?? '';
       // Don't redirect on auth endpoint 401s — the login page handles those.
-      const isPublic = PUBLIC_PATHS.some((p) => url.startsWith(p));
-      if (!isPublic) {
+      if (!isPublicPath(url)) {
         useAuthStore.getState().clearAuth();
         // Hard redirect so React state is fully reset.
         window.location.assign('/login');

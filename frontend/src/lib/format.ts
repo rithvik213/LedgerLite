@@ -2,6 +2,12 @@
  * Format a decimal string from the backend as a localised currency string.
  * We accept string (not number) because JavaScript's double-precision floats
  * cannot represent all 19-digit, 4-decimal-place values the backend may return.
+ *
+ * Display-only precision caveat: parseFloat below rounds values that exceed
+ * Number.MAX_SAFE_INTEGER's mantissa precision (~15 significant digits). For
+ * realistic personal-finance balances (≤ ~$10^13) this is exact. If the app
+ * ever needs to render large institutional balances, switch to a decimal lib
+ * (decimal.js, big.js) — never use this output to round-trip into arithmetic.
  */
 export function formatCurrency(
   value: string,

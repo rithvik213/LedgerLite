@@ -3,11 +3,15 @@ import { newIdempotencyKey } from '../lib/idempotency';
 import type { CreateTransactionRequest, TransactionResponse } from '../types/transaction';
 
 /**
- * Creates a transaction. A new idempotency key is generated per call.
+ * Creates a transaction.
  *
- * If the caller needs retry semantics (i.e. reuse the same key on network
- * failure), it should generate the key with `newIdempotencyKey()`, store it,
- * and pass it as the second argument.
+ * RETRY SAFETY: callers that may retry on network failure MUST generate the
+ * key once with `newIdempotencyKey()`, store it, and pass it explicitly on
+ * every retry — otherwise each retry sends a fresh UUID and the backend
+ * treats them as distinct transactions, defeating the deduplication and
+ * potentially producing duplicate financial entries. The default-arg form
+ * is only safe for first-attempt-only flows (e.g. a form submit guarded by
+ * a disabled button).
  */
 export async function createTransaction(
   data: CreateTransactionRequest,
