@@ -1,6 +1,6 @@
 # LedgerLite
 
-A Spring Boot 3 microservices system implementing a personal finance ledger. Built to exercise standard microservice patterns: service discovery, centralized config, API gateway, event-driven architecture, distributed tracing, and resilience patterns.
+A microservices system implementing a personal finance ledger, built on Spring Boot 3. Four business services (auth, account, transaction, analytics) sit behind an API gateway, with Eureka-based discovery and a config server rounding out the platform tier. Exercises the standard microservice patterns: service discovery, centralized config, API gateway, event-driven architecture, distributed tracing, and resilience patterns.
 
 ## Architecture
 
