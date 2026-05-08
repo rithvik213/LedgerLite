@@ -191,3 +191,23 @@ git config core.hooksPath .githooks
 Bypass for WIP pushes: `SKIP_CLAUDE_REVIEW=1 git push` (or `git push --no-verify`).
 
 Each push invokes the Claude API and consumes tokens — skip on noisy WIP pushes, run for real submissions.
+
+### Frontend e2e (Playwright)
+
+A single golden-path spec at `frontend/e2e/golden-path.spec.ts` covers the full demo flow: register → login → create account → post transaction → see it in analytics (proving the Kafka pipeline) → log out.
+
+One-time setup:
+
+```bash
+cd frontend && npm install
+npx playwright install chromium
+```
+
+Run it (the **backend stack must be running** at :8080 — see "Run instructions" above):
+
+```bash
+cd frontend && npm run e2e          # headless
+cd frontend && npm run e2e:ui       # interactive UI mode
+```
+
+The Vite dev server is auto-started by `playwright.config.ts`. The component-level Vitest suite (`npm run test`) is unchanged and remains the primary signal — Playwright is for the cross-service demo flow only.
