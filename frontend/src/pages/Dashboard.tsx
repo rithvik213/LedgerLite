@@ -210,11 +210,16 @@ export function Dashboard() {
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Dashboard</h1>
 
-      {/* Summary cards */}
+      {/* Summary cards.
+          spendingDebits filters to negative-amount rows so income (positive)
+          is excluded from "this month's spending" — otherwise a $1200
+          paycheck and a $200 of debits would surface as $1000 spending. */}
       <section aria-label="Financial summary" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <TotalBalanceCard balances={accounts.map((a) => a.balance)} currency={currency} />
         <SpendingCard
-          spending={spendingData.map((s) => s.totalAmount)}
+          spending={spendingData
+            .filter((s) => s.totalAmount.startsWith('-'))
+            .map((s) => s.totalAmount)}
           currency={currency}
           isLoading={spendingLoading}
           isError={spendingError}
@@ -285,7 +290,9 @@ export function Dashboard() {
                 />
               )}
               {!spendingLoading && (
-                <CategoryDonut data={spendingData} />
+                <CategoryDonut
+                  data={spendingData.filter((s) => s.totalAmount.startsWith('-'))}
+                />
               )}
             </CardContent>
           </Card>

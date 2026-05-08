@@ -26,5 +26,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // Vitest's default `include` would pick up `e2e/*.spec.ts`; that suite
+    // belongs to Playwright and runs against a real browser, not jsdom.
+    exclude: ['node_modules', 'dist', 'e2e'],
   },
 });
