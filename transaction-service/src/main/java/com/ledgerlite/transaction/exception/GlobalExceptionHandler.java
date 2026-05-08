@@ -47,6 +47,11 @@ public class GlobalExceptionHandler {
             problem.setTitle("Conflict");
             return problem;
         }
-        throw ex;
+        // Unrecognized integrity violation: surface as 500 rather than masking as 409,
+        // which would silently break the create endpoint's idempotent-replay contract.
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR,
+                "A database integrity error occurred");
+        problem.setTitle("Internal Server Error");
+        return problem;
     }
 }

@@ -1,6 +1,5 @@
 package com.ledgerlite.transaction.service;
 
-import com.ledgerlite.transaction.client.AccountServiceClient;
 import com.ledgerlite.transaction.dto.CreateTransactionRequest;
 import com.ledgerlite.transaction.dto.ReverseTransactionRequest;
 import com.ledgerlite.transaction.dto.TransactionPostedEvent;
@@ -8,8 +7,6 @@ import com.ledgerlite.transaction.dto.TransactionResponse;
 import com.ledgerlite.transaction.entity.Transaction;
 import com.ledgerlite.transaction.entity.TransactionStatus;
 import com.ledgerlite.transaction.repository.TransactionRepository;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -18,8 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -29,14 +24,14 @@ public class TransactionService {
     private static final String TOPIC = "transactions.posted";
 
     private final TransactionRepository transactionRepository;
-    private final AccountServiceClient accountServiceClient;
+    private final AccountBalanceUpdater accountBalanceUpdater;
     private final KafkaTemplate<String, TransactionPostedEvent> kafkaTemplate;
 
     public TransactionService(TransactionRepository transactionRepository,
-                              AccountServiceClient accountServiceClient,
+                              AccountBalanceUpdater accountBalanceUpdater,
                               KafkaTemplate<String, TransactionPostedEvent> kafkaTemplate) {
         this.transactionRepository = transactionRepository;
-        this.accountServiceClient = accountServiceClient;
+        this.accountBalanceUpdater = accountBalanceUpdater;
         this.kafkaTemplate = kafkaTemplate;
     }
 
@@ -61,7 +56,7 @@ public class TransactionService {
 
         // Call account-service to update the balance
         try {
-            updateAccountBalance(tx.getAccountId(), tx.getAmount());
+            accountBalanceUpdater.updateAccountBalance(tx.getAccountId(), tx.getAmount());
             tx.setStatus(TransactionStatus.POSTED);
             tx = transactionRepository.save(tx);
 
@@ -165,7 +160,7 @@ public class TransactionService {
         try {
             // Apply the inverse delta. The existing @CircuitBreaker + @Retry on updateAccountBalance
             // covers transient failures and optimistic-lock conflicts on the account side.
-            updateAccountBalance(reversal.getAccountId(), reversal.getAmount());
+            accountBalanceUpdater.updateAccountBalance(reversal.getAccountId(), reversal.getAmount());
             reversal.setStatus(TransactionStatus.POSTED);
             reversal = transactionRepository.save(reversal);
 
@@ -180,27 +175,6 @@ public class TransactionService {
         }
 
         return TransactionResponse.from(reversal);
-    }
-
-    @CircuitBreaker(name = "account-service", fallbackMethod = "updateBalanceFallback")
-    @Retry(name = "account-service")
-    private void updateAccountBalance(UUID accountId, BigDecimal amount) {
-        // First get the account to read its current version
-        Map<String, Object> account = accountServiceClient.getAccount(accountId);
-        Integer version = (Integer) account.get("version");
-
-        // Update balance with optimistic locking
-        Map<String, Object> balanceUpdate = Map.of(
-                "delta", amount,
-                "expectedVersion", version
-        );
-        accountServiceClient.updateBalance(accountId, balanceUpdate);
-    }
-
-    private void updateBalanceFallback(UUID accountId, BigDecimal amount, Throwable t) {
-        log.warn("account-service circuit/retry fallback invoked for account {}", accountId, t);
-        throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                "Account service is unavailable");
     }
 
     private void publishEvent(Transaction tx) {

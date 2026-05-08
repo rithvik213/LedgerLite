@@ -63,13 +63,22 @@ public class TransactionController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Idempotency-Key header is required");
         }
 
-        // Note: idempotency replay handling for the reverse path lives in the service layer
-        // because it must also assert the existing row is a reversal of this same original
-        // (cross-endpoint collision guard). Don't short-circuit here.
+        // Idempotent replay: scoped by userId, and only honored if the existing row is a
+        // reversal of this same original. The service layer enforces the cross-endpoint
+        // collision guard for any other case (existing row that isn't a reversal of `id`).
+        var existing = transactionRepository.findByIdempotencyKeyAndUserId(idempotencyKey, UUID.fromString(userId));
+        if (existing.isPresent() && id.equals(existing.get().getReversesTransactionId())) {
+            // Replay always returns 200 regardless of the stored row's terminal status —
+            // a stored FAILED row replayed as 503 would create an infinite-retry trap on
+            // poisoned keys. Clients should treat any 200 as "we already saw this".
+            return ResponseEntity.ok(TransactionResponse.from(existing.get()));
+        }
+
         TransactionResponse response = transactionService.reverseTransaction(
                 UUID.fromString(userId), idempotencyKey, id, request);
 
-        // A reversal persisted as FAILED means account-service was unreachable — surface as 503.
+        // A reversal persisted as FAILED means account-service was unreachable — surface as 503
+        // on a *fresh* request so the client knows to retry. Replays already returned 200 above.
         if (response.status() == com.ledgerlite.transaction.entity.TransactionStatus.FAILED) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
         }
