@@ -7,7 +7,7 @@ import { useAccountsList } from '../hooks/useAccounts';
 import { useSpendingByCategory } from '../hooks/useSpending';
 import { listTransactions } from '../api/transactions';
 import { transactionKeys } from '../hooks/useTransactions';
-import { sumDecimalStrings } from '../lib/decimal';
+import { sumDecimalStrings, absDecimalString } from '../lib/decimal';
 import { formatCurrency } from '../lib/format';
 import type { TransactionResponse } from '../types/transaction';
 
@@ -85,7 +85,9 @@ function SpendingCard({
         )}
         {!isLoading && !isError && (
           <p className="text-3xl font-bold tabular-nums">
-            {formatCurrency(sumDecimalStrings(spending), currency)}
+            {/* Spending arrives as negative debits from the analytics aggregator;
+                show the magnitude so "this month's spending" reads naturally. */}
+            {formatCurrency(absDecimalString(sumDecimalStrings(spending)), currency)}
           </p>
         )}
       </CardContent>

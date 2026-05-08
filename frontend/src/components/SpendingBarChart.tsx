@@ -52,8 +52,10 @@ export function SpendingBarChart({ data }: Props) {
 
   const chartData = data.map((row) => ({
     category: row.category,
-    // Display-only conversion — see JSDoc above
-    amount: Number(row.totalAmount),
+    // Display-only conversion — see JSDoc above. Math.abs because the analytics
+    // aggregator stores debits as negative; we plot magnitudes so the bars rise
+    // from a zero baseline rather than dropping below it.
+    amount: Math.abs(Number(row.totalAmount)),
     totalAmount: row.totalAmount,
   }));
 
@@ -68,6 +70,7 @@ export function SpendingBarChart({ data }: Props) {
           axisLine={false}
         />
         <YAxis
+          // Values are now always >= 0 because amount goes through Math.abs above.
           tickFormatter={(v: number) => `$${v.toFixed(0)}`}
           tick={{ fontSize: 12 }}
           tickLine={false}
